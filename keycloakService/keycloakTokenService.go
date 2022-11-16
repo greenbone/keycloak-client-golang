@@ -19,7 +19,7 @@ type UserData struct {
 	Groups         []string
 }
 
-func GetKeycloakAdapter(AuthServerUrl string) KeycloakClient {
+func GetKeycloakClient(AuthServerUrl string) KeycloakClient {
 	client := gocloak.NewClient(
 		AuthServerUrl,
 		gocloak.SetAuthRealms("realms"),

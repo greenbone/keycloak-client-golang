@@ -7,7 +7,7 @@ import (
 
 func main() {
 	t := "foo"
-	adapter := api.GetKeycloakAdapter("http://localhost:28080/auth")
+	adapter := api.GetKeycloakClient("http://localhost:28080/auth")
 	userData, err := adapter.EvaluateJwtToken("http://localhost:28080/auth", "user-management", t)
 	fmt.Println(userData, err)
 }
