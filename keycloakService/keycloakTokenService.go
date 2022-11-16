@@ -8,7 +8,7 @@ import (
 )
 
 type KeycloakClient struct {
-	client gocloak.GoCloak
+	Client gocloak.GoCloak
 }
 
 type UserData struct {
@@ -38,7 +38,7 @@ func (c KeycloakClient) EvaluateJwtToken(AuthServerUrl string, realmId string, t
 		jwt.RegisteredClaims
 	}
 
-	jwtToken, err := c.client.DecodeAccessTokenCustomClaims(context.Background(), token, realmId, &customClaims{})
+	jwtToken, err := c.Client.DecodeAccessTokenCustomClaims(context.Background(), token, realmId, &customClaims{})
 	if err != nil {
 		return UserData{}, fmt.Errorf("validation of token failed: %w", err)
 	}
