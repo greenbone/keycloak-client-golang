@@ -1,15 +1,19 @@
-package keycloakService
+package jwtTokenService
 
 import (
-	"context"
+	"crypto/rsa"
 	"fmt"
-	"github.com/Nerzal/gocloak/v11"
 	"github.com/golang-jwt/jwt/v4"
+	"strings"
 )
 
-type KeycloakClient struct {
-	Client gocloak.GoCloak
+type authorizationData struct {
+	realmId        string
+	tokenPublicKey *rsa.PublicKey
+	authServerUrl  string
 }
+
+var authData = authorizationData{"", nil, ""}
 
 type UserData struct {
 	UserName       string
@@ -19,16 +23,15 @@ type UserData struct {
 	Groups         []string
 }
 
-func GetKeycloakClient(AuthServerUrl string) KeycloakClient {
-	client := gocloak.NewClient(
-		AuthServerUrl,
-		gocloak.SetAuthRealms("realms"),
-		gocloak.SetAuthAdminRealms("admin/realms"),
-	)
-	return KeycloakClient{client}
+func SetAuthorizationData(realmId string, publicKey string, authServerUrl string) error {
+	var err error
+	authData.realmId = realmId
+	authData.authServerUrl = authServerUrl
+	authData.tokenPublicKey, err = jwt.ParseRSAPublicKeyFromPEM([]byte(publicKey))
+	return err
 }
 
-func (c KeycloakClient) EvaluateJwtToken(AuthServerUrl string, realmId string, token string) (UserData, error) {
+func EvaluateJwtToken(token string) (UserData, error) {
 	type customClaims struct {
 		PreferredUsername string   `json:"preferred_username"`
 		Email             string   `json:"email"`
@@ -38,7 +41,13 @@ func (c KeycloakClient) EvaluateJwtToken(AuthServerUrl string, realmId string, t
 		jwt.RegisteredClaims
 	}
 
-	jwtToken, err := c.Client.DecodeAccessTokenCustomClaims(context.Background(), token, realmId, &customClaims{})
+	tokenFields := strings.Fields(token)
+	if len(tokenFields) < 2 {
+		return UserData{}, fmt.Errorf("validation of token failed: incomplete token")
+	}
+	jwtToken, err := jwt.ParseWithClaims(tokenFields[1], &customClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return authData.tokenPublicKey, nil
+	})
 	if err != nil {
 		return UserData{}, fmt.Errorf("validation of token failed: %w", err)
 	}
@@ -52,7 +61,7 @@ func (c KeycloakClient) EvaluateJwtToken(AuthServerUrl string, realmId string, t
 	if !ok {
 		return UserData{}, fmt.Errorf("validation of token failed: invalid claims")
 	}
-	if myClaims.RegisteredClaims.Issuer != AuthServerUrl+"/realms/"+realmId {
+	if myClaims.RegisteredClaims.Issuer != authData.authServerUrl+"/realms/"+authData.realmId {
 		return UserData{}, fmt.Errorf("validation of token failed: wrong domain")
 	}
 

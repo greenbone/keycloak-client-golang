@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	api "github.com/greenbone/user-management-api/keycloakService"
+	api "github.com/greenbone/user-management-api/authorization/jwtTokenService"
 )
 
 func main() {
-	t := "foo"
-	client := api.GetKeycloakClient("http://localhost:28080/auth")
-	userData, err := client.EvaluateJwtToken("http://localhost:28080/auth", "user-management", t)
+	pkey := "foo"
+
+	t := "baz"
+	api.SetAuthorizationData("user-management", pkey, "http://localhost:28080/auth")
+	userData, err := api.EvaluateJwtToken(t)
 	fmt.Println(userData, err)
 }
