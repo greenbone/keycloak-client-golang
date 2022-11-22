@@ -20,17 +20,16 @@ func setUserContext(ctx *gin.Context, userCtx UserContext) {
 	ctx.Set(userContextKey, userCtx)
 }
 
-// todo: return pointer?
-func GetUserContext(ctx *gin.Context) (UserContext, error) {
+func GetUserContext(ctx *gin.Context) (*UserContext, error) {
 	v, ok := ctx.Get(userContextKey)
 	if !ok {
-		return UserContext{}, errors.New("user context data not found")
+		return nil, errors.New("user context data not found")
 	}
 
 	userData, ok := v.(UserContext)
 	if !ok {
-		return UserContext{}, errors.New("user context data has incorect type")
+		return nil, errors.New("user context data has incorrect type")
 	}
 
-	return userData, nil
+	return &userData, nil
 }
