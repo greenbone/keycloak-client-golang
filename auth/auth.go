@@ -2,28 +2,42 @@ package auth
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
 type KeycloakAuthorizer struct {
-	realmId       string
-	authServerUrl string
-	publicKey     *rsa.PublicKey
+	tokenIssuer string
+	publicKey   *rsa.PublicKey
 }
 
 func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCert string) (*KeycloakAuthorizer, error) {
+	if realmId == "" {
+		return nil, errors.New("realm id cannot be empty")
+	}
+
+	authUrl, err := url.ParseRequestURI(authServerUrl)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse auth server url: %w", err)
+	}
+
+	tokenIssuer, err := url.JoinPath(authUrl.String(), "/realms/"+realmId)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create valid token issuer: %w", err)
+	}
+
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pemPublicKeyCert))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse RSA pubkey from PEM cert: %w", err)
+		return nil, fmt.Errorf("couldn't parse rsa pubkey from pem cert: %w", err)
 	}
 
 	return &KeycloakAuthorizer{
-		realmId:       realmId,
-		authServerUrl: authServerUrl,
-		publicKey:     publicKey,
+		tokenIssuer: tokenIssuer,
+		publicKey:   publicKey,
 	}, nil
 }
 
@@ -66,7 +80,7 @@ func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid claims type")
 	}
-	if claims.RegisteredClaims.Issuer != a.authServerUrl+"/realms/"+a.realmId {
+	if claims.RegisteredClaims.Issuer != a.tokenIssuer {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
