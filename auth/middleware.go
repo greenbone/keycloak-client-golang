@@ -1,16 +1,21 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewGinAuthMiddleware(parseHeaderFunc func(authHeader string) (*UserContext, error)) gin.HandlerFunc {
+func NewGinAuthMiddleware(parseHeaderFunc func(authHeader string) (*UserContext, error)) (gin.HandlerFunc, error) {
+	if parseHeaderFunc == nil {
+		return nil, errors.New("parseHeaderFunc cannot be nil")
+	}
+
 	return func(ctx *gin.Context) {
 		var header struct {
-			Authorization string `header:"Authorization"`
+			Authorization string `header:"Authorization" binding:"required"`
 		}
 
 		if err := ctx.ShouldBindHeader(&header); err != nil {
@@ -27,5 +32,5 @@ func NewGinAuthMiddleware(parseHeaderFunc func(authHeader string) (*UserContext,
 		setUserContext(ctx, *userContext)
 
 		ctx.Next()
-	}
+	}, nil
 }
