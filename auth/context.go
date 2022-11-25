@@ -8,10 +8,11 @@ import (
 
 const userContextKey = "USER_CONTEXT_DATA"
 
+// UserContext contains parsed claims from a keycloak JWT token
 type UserContext struct {
+	KeycloakUserID string
 	UserName       string
 	EmailAddress   string
-	KeycloakUserID string
 	Roles          []string
 	Groups         []string
 }
@@ -20,6 +21,7 @@ func setUserContext(ctx *gin.Context, userCtx UserContext) {
 	ctx.Set(userContextKey, userCtx)
 }
 
+// GetUserContext extract UserContext from gin.Context. NOTE: it is immutable, you cannot change the existing context
 func GetUserContext(ctx *gin.Context) (*UserContext, error) {
 	v, ok := ctx.Get(userContextKey)
 	if !ok {

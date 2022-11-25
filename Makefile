@@ -14,7 +14,10 @@ GOARCH=amd64
 all: lint test build
 
 test: ## Run all tests
-	go test ./...
+	go test -v ./...
+
+cover: ## Run cover
+	go test -cover ./... 
 
 lint: ## Lint go code
 	golangci-lint run

@@ -2,51 +2,65 @@ package auth
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// KeycloakAuthorizer is used to validate if JWT has a correct signature and is valid and returns keycloak claims
 type KeycloakAuthorizer struct {
-	realmId       string
-	authServerUrl string
-	publicKey     *rsa.PublicKey
+	tokenIssuer string
+	publicKey   *rsa.PublicKey
 }
 
+// NewKeycloakAuthorizer creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with PEM formated public cert from keycloak
 func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCert string) (*KeycloakAuthorizer, error) {
+	if realmId == "" {
+		return nil, errors.New("realm id cannot be empty")
+	}
+
+	authUrl, err := url.ParseRequestURI(authServerUrl)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse auth server url: %w", err)
+	}
+	tokenIssuer := authUrl.JoinPath("/realms/" + realmId).String()
+
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pemPublicKeyCert))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse RSA pubkey from PEM cert: %w", err)
+		return nil, fmt.Errorf("couldn't parse rsa pubkey from pem cert: %w", err)
 	}
 
 	return &KeycloakAuthorizer{
-		realmId:       realmId,
-		authServerUrl: authServerUrl,
-		publicKey:     publicKey,
+		tokenIssuer: tokenIssuer,
+		publicKey:   publicKey,
 	}, nil
 }
 
+// ParseAuthorizationHeader parser an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
 func (a KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserContext, error) {
 	fields := strings.Fields(authHeader)
 	if len(fields) != 2 {
-		return nil, fmt.Errorf("header contains invalid number (%q) of fields", len(fields))
+		return nil, fmt.Errorf("header contains invalid number of fields: %d", len(fields))
 	}
 	if strings.ToLower(fields[0]) != "bearer" {
-		return nil, fmt.Errorf("header contains invalid token type %q", fields[0])
+		return nil, fmt.Errorf("header contains invalid token type: %q", fields[0])
 	}
 
 	return a.ParseJWT(fields[1])
 }
 
+// ParseJWT parses and validated JWT token and returns UserContext with extracted token claims
 func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	type customClaims struct {
 		jwt.RegisteredClaims
-		PreferredUsername string   `json:"preferred_username"`
-		Email             string   `json:"email"`
-		UserId            string   `json:"sub"`
-		Roles             []string `json:"roles"`
-		Groups            []string `json:"groups"`
+		UserId   string   `json:"sub"`
+		Email    string   `json:"email"`
+		UserName string   `json:"preferred_username"`
+		Roles    []string `json:"roles"`
+		Groups   []string `json:"groups"`
 	}
 
 	jwtToken, err := jwt.ParseWithClaims(token, &customClaims{}, func(*jwt.Token) (interface{}, error) {
@@ -55,26 +69,17 @@ func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("validation of token failed: %w", err)
 	}
-	if !jwtToken.Valid {
-		return nil, fmt.Errorf("token is invalid")
-	}
-	if jwtToken.Header["alg"] == nil {
-		return nil, fmt.Errorf("token alg must be defined")
-	}
 
-	claims, ok := jwtToken.Claims.(*customClaims)
-	if !ok {
-		return nil, fmt.Errorf("invalid claims type")
-	}
-	if claims.RegisteredClaims.Issuer != a.authServerUrl+"/realms/"+a.realmId {
+	claims := jwtToken.Claims.(*customClaims)
+	if claims.RegisteredClaims.Issuer != a.tokenIssuer {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
 	return &UserContext{
-		claims.PreferredUsername,
-		claims.Email,
-		claims.UserId,
-		claims.Roles,
-		claims.Groups,
+		KeycloakUserID: claims.UserId,
+		UserName:       claims.UserName,
+		EmailAddress:   claims.Email,
+		Roles:          claims.Roles,
+		Groups:         claims.Groups,
 	}, nil
 }
