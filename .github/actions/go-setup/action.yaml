@@ -1,0 +1,17 @@
+name: 'Go setup'
+description: 'Setup go and cache and go download mods'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
+      with:
+        cache: true
+        cache-dependency-path: go.sum
+        go-version-file: go.mod
+    - run: go mod download
+      shell: bash
+      env:
+        GOPRIVATE: github.com/greenbone
+      
