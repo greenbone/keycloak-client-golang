@@ -45,8 +45,8 @@ func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 		PreferredUsername string   `json:"preferred_username"`
 		Email             string   `json:"email"`
 		UserId            string   `json:"sub"`
-		Roles             []string `json:"Role"`
-		Groups            []string `json:"Group"`
+		Roles             []string `json:"roles"`
+		Groups            []string `json:"groups"`
 	}
 
 	jwtToken, err := jwt.ParseWithClaims(token, &customClaims{}, func(*jwt.Token) (interface{}, error) {
