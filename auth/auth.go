@@ -24,11 +24,7 @@ func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCer
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse auth server url: %w", err)
 	}
-
-	tokenIssuer, err := url.JoinPath(authUrl.String(), "/realms/"+realmId)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create valid token issuer: %w", err)
-	}
+	tokenIssuer := authUrl.JoinPath("/realms/" + realmId).String()
 
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pemPublicKeyCert))
 	if err != nil {
@@ -44,10 +40,10 @@ func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCer
 func (a KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserContext, error) {
 	fields := strings.Fields(authHeader)
 	if len(fields) != 2 {
-		return nil, fmt.Errorf("header contains invalid number (%q) of fields", len(fields))
+		return nil, fmt.Errorf("header contains invalid number of fields: %d", len(fields))
 	}
 	if strings.ToLower(fields[0]) != "bearer" {
-		return nil, fmt.Errorf("header contains invalid token type %q", fields[0])
+		return nil, fmt.Errorf("header contains invalid token type: %q", fields[0])
 	}
 
 	return a.ParseJWT(fields[1])
@@ -56,11 +52,11 @@ func (a KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserCo
 func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	type customClaims struct {
 		jwt.RegisteredClaims
-		PreferredUsername string   `json:"preferred_username"`
-		Email             string   `json:"email"`
-		UserId            string   `json:"sub"`
-		Roles             []string `json:"Role"`
-		Groups            []string `json:"Group"`
+		UserId   string   `json:"sub"`
+		Email    string   `json:"email"`
+		UserName string   `json:"preferred_username"`
+		Roles    []string `json:"roles"`
+		Groups   []string `json:"groups"`
 	}
 
 	jwtToken, err := jwt.ParseWithClaims(token, &customClaims{}, func(*jwt.Token) (interface{}, error) {
@@ -69,26 +65,17 @@ func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("validation of token failed: %w", err)
 	}
-	if !jwtToken.Valid {
-		return nil, fmt.Errorf("token is invalid")
-	}
-	if jwtToken.Header["alg"] == nil {
-		return nil, fmt.Errorf("token alg must be defined")
-	}
 
-	claims, ok := jwtToken.Claims.(*customClaims)
-	if !ok {
-		return nil, fmt.Errorf("invalid claims type")
-	}
+	claims := jwtToken.Claims.(*customClaims)
 	if claims.RegisteredClaims.Issuer != a.tokenIssuer {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
 	return &UserContext{
-		claims.PreferredUsername,
-		claims.Email,
-		claims.UserId,
-		claims.Roles,
-		claims.Groups,
+		KeycloakUserID: claims.UserId,
+		UserName:       claims.UserName,
+		EmailAddress:   claims.Email,
+		Roles:          claims.Roles,
+		Groups:         claims.Groups,
 	}, nil
 }

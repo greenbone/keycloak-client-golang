@@ -9,9 +9,9 @@ import (
 const userContextKey = "USER_CONTEXT_DATA"
 
 type UserContext struct {
+	KeycloakUserID string
 	UserName       string
 	EmailAddress   string
-	KeycloakUserID string
 	Roles          []string
 	Groups         []string
 }
