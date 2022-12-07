@@ -39,6 +39,35 @@ func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCer
 	}, nil
 }
 
+type KeycloakRealmInfo struct {
+	AuthServerUrl    string
+	PEMPublicKeyCert string
+}
+
+// NewKeycloakAuthorizerMultiRealm creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with PEM formated public cert from keycloak
+// It works for multiple realms and caches the realm information if cache is enabled
+func NewKeycloakAuthorizerMultiRealm(func(realmId string) (KeycloakRealmInfo, error)) (*KeycloakAuthorizer, error) {
+	if realmId == "" {
+		return nil, errors.New("realm id cannot be empty")
+	}
+
+	authUrl, err := url.ParseRequestURI(authServerUrl)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse auth server url: %w", err)
+	}
+	tokenIssuer := authUrl.JoinPath("/realms/" + realmId).String()
+
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pemPublicKeyCert))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse rsa pubkey from pem cert: %w", err)
+	}
+
+	return &KeycloakAuthorizer{
+		tokenIssuer: tokenIssuer,
+		publicKey:   publicKey,
+	}, nil
+}
+
 // ParseAuthorizationHeader parser an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
 func (a KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserContext, error) {
 	fields := strings.Fields(authHeader)
