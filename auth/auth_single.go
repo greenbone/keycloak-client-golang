@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -38,14 +39,50 @@ func NewKeycloakAuthorizer(realmId string, authServerUrl string, pemPublicKeyCer
 	}, nil
 }
 
-// ParseAuthorizationHeader parser an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
+type AuthRequest struct {
+	AuthorizationHeader string
+	Origin              string
+}
+
+// ParseRequest parses a request (authorization header and origin of the call), validates JWT and returns UserContext with extracted token claims
+func (a KeycloakAuthorizer) ParseRequest(req AuthRequest) (*UserContext, error) {
+	token, err := parseAuthorizationHeader(req.AuthorizationHeader)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse header: %w", err)
+	}
+
+	userCtx, err := a.ParseJWT(token)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse token: %w", err)
+	}
+
+	correctOrigin := false
+	for _, origin := range userCtx.allowedOrigins {
+		if req.Origin == origin {
+			correctOrigin = true
+			break
+		}
+	}
+	if !correctOrigin {
+		return nil, fmt.Errorf("not allowed origin: %s", req.Origin)
+	}
+
+	return userCtx, nil
+}
+
+// ParseAuthorizationHeader parses an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
 func (a KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserContext, error) {
 	token, err := parseAuthorizationHeader(authHeader)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing header string: %w")
+		return nil, fmt.Errorf("couldn't parse header: %w", err)
 	}
 
-	return a.ParseJWT(token)
+	userCtx, err := a.ParseJWT(token)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse token: %w", err)
+	}
+
+	return userCtx, nil
 }
 
 // ParseJWT parses and validated JWT token and returns UserContext with extracted token claims
@@ -62,11 +99,16 @@ func (a KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
+	parts := strings.Split(claims.RegisteredClaims.Issuer, "/")
+	realm := parts[len(parts)-1]
+
 	return &UserContext{
-		KeycloakUserID: claims.UserId,
+		Realm:          realm,
+		UserID:         claims.UserId,
 		UserName:       claims.UserName,
 		EmailAddress:   claims.Email,
 		Roles:          claims.Roles,
 		Groups:         claims.Groups,
+		allowedOrigins: claims.AllowedOrigins,
 	}, nil
 }

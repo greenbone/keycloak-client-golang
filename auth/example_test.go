@@ -35,6 +35,7 @@ func init() {
 		"preferred_username": "some_user",
 		"roles":              []string{"some_role"},
 		"groups":             []string{"some_group"},
+		"allowed-origins":    []string{"http://localhost:3000"},
 	}).SignedString(secret)
 	if err != nil {
 		panic(err)
@@ -61,7 +62,7 @@ func ExampleNewKeycloakAuthorizer() {
 	}
 
 	fmt.Printf("%#v", userContext)
-	// Output: &auth.UserContext{KeycloakUserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}}
+	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
 }
 
 func ExampleNewGinAuthMiddleware() {
@@ -103,5 +104,5 @@ func ExampleNewGinAuthMiddleware() {
 	router.ServeHTTP(w, req)
 
 	fmt.Print(w.Body.String())
-	// Output: &auth.UserContext{KeycloakUserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}}
+	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
 }

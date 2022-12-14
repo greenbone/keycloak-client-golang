@@ -9,11 +9,12 @@ import (
 
 type customClaims struct {
 	jwt.RegisteredClaims
-	UserId   string   `json:"sub"`
-	Email    string   `json:"email"`
-	UserName string   `json:"preferred_username"`
-	Roles    []string `json:"roles"`
-	Groups   []string `json:"groups"`
+	UserId         string   `json:"sub"`
+	Email          string   `json:"email"`
+	UserName       string   `json:"preferred_username"`
+	Roles          []string `json:"roles"`
+	Groups         []string `json:"groups"`
+	AllowedOrigins []string `json:"allowed-origins"`
 }
 
 func parseAuthorizationHeader(authHeader string) (string, error) {

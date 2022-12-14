@@ -111,7 +111,8 @@ func TestParseJWT(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, userContext)
 
-		assert.Equal(t, "12345", userContext.KeycloakUserID)
+		assert.Equal(t, "user-management", userContext.Realm)
+		assert.Equal(t, "12345", userContext.UserID)
 		assert.Equal(t, "some@email.com", userContext.EmailAddress)
 		assert.Equal(t, "some_user", userContext.UserName)
 		assert.Equal(t, []string{"some_role"}, userContext.Roles)
@@ -152,7 +153,8 @@ func TestParseAuthorizationHeader(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, userContext)
 
-		assert.Equal(t, "12345", userContext.KeycloakUserID)
+		assert.Equal(t, "user-management", userContext.Realm)
+		assert.Equal(t, "12345", userContext.UserID)
 		assert.Equal(t, "some@email.com", userContext.EmailAddress)
 		assert.Equal(t, "some_user", userContext.UserName)
 		assert.Equal(t, []string{"some_role"}, userContext.Roles)

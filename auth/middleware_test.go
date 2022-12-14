@@ -60,11 +60,12 @@ func TestGinAuthMiddleware(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		auth, err := NewGinAuthMiddleware(func(authHeader string) (*UserContext, error) {
 			return &UserContext{
-				KeycloakUserID: "12345",
-				EmailAddress:   "some@email.com",
-				UserName:       "some_user",
-				Roles:          []string{"some_role"},
-				Groups:         []string{"some_group"},
+				Realm:        "user-management",
+				UserID:       "12345",
+				EmailAddress: "some@email.com",
+				UserName:     "some_user",
+				Roles:        []string{"some_role"},
+				Groups:       []string{"some_group"},
 			}, nil
 		})
 
@@ -84,7 +85,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, userContext)
 
-		assert.Equal(t, "12345", userContext.KeycloakUserID)
+		assert.Equal(t, "12345", userContext.UserID)
 		assert.Equal(t, "some@email.com", userContext.EmailAddress)
 		assert.Equal(t, "some_user", userContext.UserName)
 		assert.Equal(t, []string{"some_role"}, userContext.Roles)
