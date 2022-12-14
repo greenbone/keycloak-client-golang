@@ -49,7 +49,18 @@ func ExampleNewKeycloakAuthorizer() {
 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
 	)
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmId, authServerUrl, pubCertPEM)
+	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+		if realm == realmId {
+			return auth.KeycloakRealmInfo{
+				AuthServerUrl:    authServerUrl,
+				PEMPublicKeyCert: pubCertPEM,
+			}, nil
+		}
+
+		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+	}
+
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
@@ -72,7 +83,17 @@ func ExampleNewGinAuthMiddleware() {
 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
 	)
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmId, authServerUrl, pubCertPEM)
+	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+		if realm == realmId {
+			return auth.KeycloakRealmInfo{
+				AuthServerUrl:    authServerUrl,
+				PEMPublicKeyCert: pubCertPEM,
+			}, nil
+		}
+
+		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+	}
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
