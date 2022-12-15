@@ -22,6 +22,8 @@ func TestNewGinAuthMiddleware(t *testing.T) {
 }
 
 func TestGinAuthMiddleware(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
 	t.Run("No header", func(t *testing.T) {
 		auth, err := NewGinAuthMiddleware(func(authHeader string) (*UserContext, error) { return &UserContext{}, nil })
 

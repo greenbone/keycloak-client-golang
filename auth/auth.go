@@ -126,14 +126,17 @@ func (a KeycloakMultiAuthorizer) ParseJWT(token string) (*UserContext, error) {
 		AllowedOrigins []string `json:"allowed-origins"`
 	}
 
-	jwtToken, err := jwt.ParseWithClaims(token, &customClaims{}, nil)
-	if err != nil { // ValidationErrorUnverifiable
+	jwtToken, _, err := jwt.NewParser().ParseUnverified(token, &customClaims{})
+	if err != nil {
 		return nil, fmt.Errorf("parsing of token failed: %w", err)
 	}
-
 	claims := jwtToken.Claims.(*customClaims)
+
 	parts := strings.Split(claims.RegisteredClaims.Issuer, "/")
 	realm := parts[len(parts)-1]
+	if realm == "" {
+		return nil, fmt.Errorf("token doesn't contain realm info")
+	}
 
 	// todo: cache
 	realmInfo, err := a.infoGetter(realm)
