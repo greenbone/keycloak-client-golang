@@ -92,9 +92,9 @@ func ExampleNewKeycloakAuthorizer() {
 	fmt.Printf("%#v\n", userContext3)
 
 	// Output:
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
 }
 
 func ExampleNewGinAuthMiddleware() {
@@ -148,5 +148,5 @@ func ExampleNewGinAuthMiddleware() {
 	router.ServeHTTP(w, req)
 
 	fmt.Print(w.Body.String())
-	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
+	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
 }
