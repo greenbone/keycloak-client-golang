@@ -16,7 +16,7 @@ type UserContext struct {
 	EmailAddress   string
 	Roles          []string
 	Groups         []string
-	allowedOrigins []string
+	AllowedOrigins []string
 }
 
 func setUserContext(ctx *gin.Context, userCtx UserContext) {

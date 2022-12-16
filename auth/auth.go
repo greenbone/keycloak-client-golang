@@ -97,7 +97,7 @@ func (a *KeycloakAuthorizer) ParseRequest(authorizationHeader string, originHead
 	}
 
 	correctOrigin := false
-	for _, origin := range userCtx.allowedOrigins {
+	for _, origin := range userCtx.AllowedOrigins {
 		if originHeader == origin {
 			correctOrigin = true
 			break
@@ -172,7 +172,7 @@ func (a *KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 		EmailAddress:   claims.Email,
 		Roles:          claims.Roles,
 		Groups:         claims.Groups,
-		allowedOrigins: claims.AllowedOrigins,
+		AllowedOrigins: claims.AllowedOrigins,
 	}, nil
 }
 

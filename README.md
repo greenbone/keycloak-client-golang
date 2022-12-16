@@ -46,6 +46,17 @@ func main() {
         }
 
         c.String(http.StatusOK, fmt.Sprintf("%#v", userContext))
+        // Output:
+        //
+        // &auth.UserContext{
+        //     Realm: "user-management", 
+        //     UserID: "12345", 
+        //     UserName: "some_user", 
+        //     EmailAddress: "some@email.com", 
+        //     Roles: []string{"some_role"}, 
+        //     Groups: []string{"some_group"}, 
+        //     AllowedOrigins: []string{"http://localhost:3000"},
+        // }
     })
 }
 ```
