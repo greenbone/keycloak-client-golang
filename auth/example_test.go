@@ -35,6 +35,7 @@ func init() {
 		"preferred_username": "some_user",
 		"roles":              []string{"some_role"},
 		"groups":             []string{"some_group"},
+		"allowed-origins":    []string{"http://localhost:3000"},
 	}).SignedString(secret)
 	if err != nil {
 		panic(err)
@@ -46,22 +47,54 @@ func ExampleNewKeycloakAuthorizer() {
 		realmId       = "user-management"             // keycloak realm name
 		authServerUrl = "http://localhost:28080/auth" // keycloak server url
 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
+		origin        = "http://localhost:3000"       // request origin
 	)
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmId, authServerUrl, pubCertPEM)
+	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+		if realm == realmId {
+			return auth.KeycloakRealmInfo{
+				AuthServerUrl:    authServerUrl,
+				PEMPublicKeyCert: pubCertPEM,
+			}, nil
+		}
+
+		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+	}
+
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
 	}
 
-	userContext, err := authorizer.ParseJWT(validToken) // pass jwt token here
+	userContext1, err := authorizer.ParseJWT(validToken) // pass jwt token here
 	if err != nil {
 		log.Fatal(fmt.Errorf("error parsing token: %w", err))
 		return
 	}
 
-	fmt.Printf("%#v", userContext)
-	// Output: &auth.UserContext{KeycloakUserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}}
+	fmt.Printf("%#v\n", userContext1)
+
+	userContext2, err := authorizer.ParseAuthorizationHeader("bearer " + validToken) // pass authorization header here
+	if err != nil {
+		log.Fatal(fmt.Errorf("error parsing token: %w", err))
+		return
+	}
+
+	fmt.Printf("%#v\n", userContext2)
+
+	userContext3, err := authorizer.ParseRequest("bearer "+validToken, origin) // pass authorization and origin headers here
+	if err != nil {
+		log.Fatal(fmt.Errorf("error parsing token: %w", err))
+		return
+	}
+
+	fmt.Printf("%#v\n", userContext3)
+
+	// Output:
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
+	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
 }
 
 func ExampleNewGinAuthMiddleware() {
@@ -69,22 +102,33 @@ func ExampleNewGinAuthMiddleware() {
 		realmId       = "user-management"             // keycloak realm name
 		authServerUrl = "http://localhost:28080/auth" // keycloak server url
 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
+		origin        = "http://localhost:3000"       // request origin
 	)
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmId, authServerUrl, pubCertPEM)
+	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+		if realm == realmId {
+			return auth.KeycloakRealmInfo{
+				AuthServerUrl:    authServerUrl,
+				PEMPublicKeyCert: pubCertPEM,
+			}, nil
+		}
+
+		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+	}
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter, auth.WithRealmInfoCache())
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
 	}
 
-	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseAuthorizationHeader)
+	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseRequest)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak auth middleware: %w", err))
 		return
 	}
 
 	gin.SetMode(gin.TestMode)
-	router := gin.Default()
+	router := gin.New()
 	router.Use(authMiddleware) // wire up middleware
 
 	router.GET("/test", func(c *gin.Context) {
@@ -100,8 +144,9 @@ func ExampleNewGinAuthMiddleware() {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
+	req.Header.Add("Origin", origin)
 	router.ServeHTTP(w, req)
 
 	fmt.Print(w.Body.String())
-	// Output: &auth.UserContext{KeycloakUserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}}
+	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, allowedOrigins:[]string{"http://localhost:3000"}}
 }

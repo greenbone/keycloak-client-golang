@@ -9,14 +9,20 @@ See [auth/example_test.go](auth/example_test.go) for example usage or snippet be
 ```go
 import "github.com/greenbone/user-management-api/auth"
 
-const (
-    realmId       = "user-management"             // keycloak realm name
-    authServerUrl = "http://localhost:28080/auth" // keycloak server url
-    pubCertPEM    = "..."                         // PEM formated public cert for keycloak token validation
-)
-
 func main() {
-    authorizer, err := auth.NewKeycloakAuthorizer(realmId, authServerUrl, pubCertPEM)
+    realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+        ...  // fetch data from database or other source for given `realm`
+        if ok {
+            return auth.KeycloakRealmInfo{
+                AuthServerUrl:    "http://localhost:28080/auth", // keycloak server url
+                PEMPublicKeyCert: "..."                          // PEM formated public cert for keycloak token validation
+            }, nil
+        }
+
+        return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+    }
+
+    authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter, auth.WithRealmInfoCache()) // WithRealmInfoCache enables persistent realm info cache, meaning you can safely query db in it and it will always get called only once per realm
     if err != nil {
         log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
         return
@@ -46,8 +52,8 @@ func main() {
 
 *Steps:*
 
-- create keycloak authorizer via `auth.NewKeycloakAuthorizer`. Pass keycloak params obtained from realm creation event
-- create gin middleware via `auth.NewGinAuthMiddleware` that will use above keycloak authorizer to check `Authorization` header and put decoded claims into gin context
+- create a realm info getter function `func(realm string) (auth.KeycloakRealmInfo, error)` that will reaturn keycloak auth url and PEM formatted public key for token signature validation. This data can be obtained from realm creation event and should be stored in your local database
+- create keycloak authorizer via `auth.NewKeycloakAuthorizer` and pass the realm info getter function. Suggested usage with `auth.WithRealmInfoCache()` option on to cache calls to realm info getter only once per realm per whole app lifetime.
+- create gin middleware via `auth.NewGinAuthMiddleware` that will use above keycloak authorizer to check `Authorization` header for the bearer token and `Origin` header for an allowed origin. It will put decoded claims into gin context
 - wire up auth middleware to routes you decide
 - inside routes use `auth.GetUserContext` to get decoded token claims as a user context object from gin context
-
