@@ -13,8 +13,9 @@ import (
 var validCert string
 
 const (
-	validRealm = "user-management"
-	validUrl   = "http://localhost:28080/auth"
+	validRealm  = "user-management"
+	validUrl    = "http://localhost:28080/auth"
+	validOrigin = "http://localhost:3000"
 )
 
 func realmInfoGetter(realm string) (KeycloakRealmInfo, error) {
@@ -221,6 +222,46 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		userContext, err := authorizer.ParseAuthorizationHeader(fmt.Sprintf("bearer %s", validToken))
 
+		require.NoError(t, err)
+		require.NotNil(t, userContext)
+
+		assert.Equal(t, "user-management", userContext.Realm)
+		assert.Equal(t, "12345", userContext.UserID)
+		assert.Equal(t, "some@email.com", userContext.EmailAddress)
+		assert.Equal(t, "some_user", userContext.UserName)
+		assert.Equal(t, []string{"some_role"}, userContext.Roles)
+		assert.Equal(t, []string{"some_group"}, userContext.Groups)
+	})
+}
+
+func TestParseRequest(t *testing.T) {
+	authorizer, err := NewKeycloakAuthorizer(realmInfoGetter)
+	require.NoError(t, err)
+	require.NotNil(t, authorizer)
+
+	t.Run("Invalid authorization header", func(t *testing.T) {
+		userContext, err := authorizer.ParseRequest("invalid", validOrigin)
+
+		assert.ErrorContains(t, err, "couldn't parse authorization header")
+		assert.Nil(t, userContext)
+	})
+
+	t.Run("Invalid token", func(t *testing.T) {
+		userContext, err := authorizer.ParseRequest("bearer invalid_token", validOrigin)
+
+		assert.ErrorContains(t, err, "couldn't parse token")
+		assert.Nil(t, userContext)
+	})
+
+	t.Run("Invalid origin", func(t *testing.T) {
+		userContext, err := authorizer.ParseRequest(fmt.Sprintf("bearer %s", validToken), "http:/invalid-origin.com")
+
+		assert.ErrorContains(t, err, "not allowed origin")
+		assert.Nil(t, userContext)
+	})
+
+	t.Run("OK", func(t *testing.T) {
+		userContext, err := authorizer.ParseRequest(fmt.Sprintf("bearer %s", validToken), validOrigin)
 		require.NoError(t, err)
 		require.NotNil(t, userContext)
 

@@ -42,12 +42,6 @@ func (i *KeycloakRealmInfo) validate(realm string) error {
 	return nil
 }
 
-// AuthRequest contains the authorization header and origin of the web call to be authorized
-type AuthRequest struct {
-	AuthorizationHeader string
-	Origin              string
-}
-
 type RealmInfoGetter func(realm string) (KeycloakRealmInfo, error)
 
 // NewKeycloakAuthorizer creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with PEM formated public cert from keycloak.
@@ -62,8 +56,8 @@ func NewKeycloakAuthorizer(infoGetter RealmInfoGetter) (*KeycloakMultiAuthorizer
 	}, nil
 }
 
-func (a KeycloakMultiAuthorizer) parseAuthorizationHeader(authHeader string) (string, error) {
-	fields := strings.Fields(authHeader)
+func (a KeycloakMultiAuthorizer) parseAuthorizationHeader(authorizationHeader string) (string, error) {
+	fields := strings.Fields(authorizationHeader)
 	if len(fields) != 2 {
 		return "", fmt.Errorf("header contains invalid number of fields: %d", len(fields))
 	}
@@ -74,10 +68,10 @@ func (a KeycloakMultiAuthorizer) parseAuthorizationHeader(authHeader string) (st
 }
 
 // ParseRequest parses a request (authorization header and origin of the call), validates JWT and returns UserContext with extracted token claims
-func (a KeycloakMultiAuthorizer) ParseRequest(req AuthRequest) (*UserContext, error) {
-	token, err := a.parseAuthorizationHeader(req.AuthorizationHeader)
+func (a KeycloakMultiAuthorizer) ParseRequest(authorizationHeader string, originHeader string) (*UserContext, error) {
+	token, err := a.parseAuthorizationHeader(authorizationHeader)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse header: %w", err)
+		return nil, fmt.Errorf("couldn't parse authorization header: %w", err)
 	}
 
 	userCtx, err := a.ParseJWT(token)
@@ -87,13 +81,13 @@ func (a KeycloakMultiAuthorizer) ParseRequest(req AuthRequest) (*UserContext, er
 
 	correctOrigin := false
 	for _, origin := range userCtx.allowedOrigins {
-		if req.Origin == origin {
+		if originHeader == origin {
 			correctOrigin = true
 			break
 		}
 	}
 	if !correctOrigin {
-		return nil, fmt.Errorf("not allowed origin: %s", req.Origin)
+		return nil, fmt.Errorf("not allowed origin: %s", originHeader)
 	}
 
 	return userCtx, nil

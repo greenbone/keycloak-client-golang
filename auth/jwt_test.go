@@ -88,7 +88,7 @@ func init() {
 		"preferred_username": "some_user",
 		"roles":              []string{"some_role"},
 		"groups":             []string{"some_group"},
-		"allowed-origins":    []string{"http://localhost:3000"},
+		"allowed-origins":    []string{validOrigin},
 	}
 
 	validToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, validClaims).SignedString(secret)

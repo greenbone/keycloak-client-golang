@@ -99,7 +99,7 @@ func ExampleNewGinAuthMiddleware() {
 		return
 	}
 
-	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseAuthorizationHeader)
+	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseRequest)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak auth middleware: %w", err))
 		return
@@ -122,6 +122,7 @@ func ExampleNewGinAuthMiddleware() {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
+	req.Header.Add("Origin", "http://localhost:3000")
 	router.ServeHTTP(w, req)
 
 	fmt.Print(w.Body.String())

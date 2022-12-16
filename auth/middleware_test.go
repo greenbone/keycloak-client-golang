@@ -25,7 +25,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("No header", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(authHeader string) (*UserContext, error) { return &UserContext{}, nil })
+		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) { return &UserContext{}, nil })
 
 		require.NoError(t, err)
 		require.NotNil(t, auth)
@@ -39,10 +39,11 @@ func TestGinAuthMiddleware(t *testing.T) {
 		require.Len(t, ctx.Errors, 1)
 		assert.ErrorContains(t, ctx.Errors[0], "could not bind header")
 		assert.ErrorContains(t, ctx.Errors[0], "Authorization")
+		assert.ErrorContains(t, ctx.Errors[0], "Origin")
 	})
 
 	t.Run("Failed auth", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(authHeader string) (*UserContext, error) { return nil, errors.New("test error") })
+		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) { return nil, errors.New("test error") })
 
 		require.NoError(t, err)
 		require.NotNil(t, auth)
@@ -51,6 +52,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 		ctx, _ := gin.CreateTestContext(w)
 		ctx.Request, _ = http.NewRequest("GET", "/", nil)
 		ctx.Request.Header.Add("Authorization", "bearer token")
+		ctx.Request.Header.Add("Origin", "origin")
 		auth(ctx)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -60,7 +62,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(authHeader string) (*UserContext, error) {
+		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) {
 			return &UserContext{
 				Realm:        "user-management",
 				UserID:       "12345",
@@ -78,6 +80,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 		ctx, _ := gin.CreateTestContext(w)
 		ctx.Request, _ = http.NewRequest("GET", "/", nil)
 		ctx.Request.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
+		ctx.Request.Header.Add("Origin", validOrigin)
 		auth(ctx)
 
 		require.Equal(t, http.StatusOK, w.Code)
