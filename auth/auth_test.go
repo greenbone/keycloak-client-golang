@@ -273,3 +273,46 @@ func TestParseRequest(t *testing.T) {
 		assert.Equal(t, []string{"some_group"}, userContext.Groups)
 	})
 }
+
+func TestCache(t *testing.T) {
+	const n = 5
+
+	runCacheTest := func(t *testing.T, opts ...KeycloakAuthorizerOption) int {
+		executionCounter := 0
+
+		authorizer, err := NewKeycloakAuthorizer(func(realm string) (KeycloakRealmInfo, error) {
+			executionCounter++
+			return realmInfoGetter(realm)
+		}, opts...)
+		require.NoError(t, err)
+		require.NotNil(t, authorizer)
+
+		for i := 0; i < n; i++ {
+			userContext, err := authorizer.ParseJWT(validToken)
+
+			require.NoError(t, err)
+			require.NotNil(t, userContext)
+
+			assert.Equal(t, "user-management", userContext.Realm)
+			assert.Equal(t, "12345", userContext.UserID)
+			assert.Equal(t, "some@email.com", userContext.EmailAddress)
+			assert.Equal(t, "some_user", userContext.UserName)
+			assert.Equal(t, []string{"some_role"}, userContext.Roles)
+			assert.Equal(t, []string{"some_group"}, userContext.Groups)
+		}
+
+		return executionCounter
+	}
+
+	t.Run("No cache", func(t *testing.T) {
+		executionCounter := runCacheTest(t)
+
+		assert.Equal(t, n, executionCounter)
+	})
+
+	t.Run("With cache", func(t *testing.T) {
+		executionCounter := runCacheTest(t, WithRealmInfoCache())
+
+		assert.Equal(t, 1, executionCounter)
+	})
+}
