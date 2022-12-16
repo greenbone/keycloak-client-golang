@@ -52,8 +52,8 @@ func main() {
 
 *Steps:*
 
-- create a realm info getter funcion `func(realm string) (auth.KeycloakRealmInfo, error)` that will reaturn keycloak auth url and PEM formatted public key for token signature validation. This data can be obtained from realm creation event and should be stored in your local database
-- create keycloak authorizer via `auth.NewKeycloakAuthorizer` and pass the realm info getter funcion. Suggested usage with `auth.WithRealmInfoCache()` option on to cache calls to realm info getter only once per realm per whole app lifetime.
+- create a realm info getter function `func(realm string) (auth.KeycloakRealmInfo, error)` that will reaturn keycloak auth url and PEM formatted public key for token signature validation. This data can be obtained from realm creation event and should be stored in your local database
+- create keycloak authorizer via `auth.NewKeycloakAuthorizer` and pass the realm info getter function. Suggested usage with `auth.WithRealmInfoCache()` option on to cache calls to realm info getter only once per realm per whole app lifetime.
 - create gin middleware via `auth.NewGinAuthMiddleware` that will use above keycloak authorizer to check `Authorization` header for the bearer token and `Origin` header for an allowed origin. It will put decoded claims into gin context
 - wire up auth middleware to routes you decide
 - inside routes use `auth.GetUserContext` to get decoded token claims as a user context object from gin context
