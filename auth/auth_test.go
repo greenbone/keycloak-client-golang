@@ -21,8 +21,8 @@ const (
 func realmInfoGetter(realm string) (KeycloakRealmInfo, error) {
 	if realm == validRealm {
 		return KeycloakRealmInfo{
-			AuthServerUrl:    validUrl,
-			PEMPublicKeyCert: validCert,
+			InternalAuthServerUrl: validUrl,
+			PEMPublicKeyCert:      validCert,
 		}, nil
 	}
 
@@ -57,8 +57,8 @@ func TestRealmInfoGetter(t *testing.T) {
 			t.Run(test, func(t *testing.T) {
 				authorizer, err := NewKeycloakAuthorizer(func(realm string) (KeycloakRealmInfo, error) {
 					return KeycloakRealmInfo{
-						AuthServerUrl:    test,
-						PEMPublicKeyCert: validCert,
+						InternalAuthServerUrl: test,
+						PEMPublicKeyCert:      validCert,
 					}, nil
 				})
 				require.NoError(t, err)
@@ -82,8 +82,8 @@ func TestRealmInfoGetter(t *testing.T) {
 			t.Run(test, func(t *testing.T) {
 				authorizer, err := NewKeycloakAuthorizer(func(realm string) (KeycloakRealmInfo, error) {
 					return KeycloakRealmInfo{
-						AuthServerUrl:    validUrl,
-						PEMPublicKeyCert: test,
+						InternalAuthServerUrl: validUrl,
+						PEMPublicKeyCert:      test,
 					}, nil
 				})
 				require.NoError(t, err)

@@ -53,8 +53,8 @@ func ExampleNewKeycloakAuthorizer() {
 	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
 		if realm == realmId {
 			return auth.KeycloakRealmInfo{
-				AuthServerUrl:    authServerUrl,
-				PEMPublicKeyCert: pubCertPEM,
+				InternalAuthServerUrl: authServerUrl,
+				PEMPublicKeyCert:      pubCertPEM,
 			}, nil
 		}
 
@@ -108,8 +108,8 @@ func ExampleNewGinAuthMiddleware() {
 	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
 		if realm == realmId {
 			return auth.KeycloakRealmInfo{
-				AuthServerUrl:    authServerUrl,
-				PEMPublicKeyCert: pubCertPEM,
+				InternalAuthServerUrl: authServerUrl,
+				PEMPublicKeyCert:      pubCertPEM,
 			}, nil
 		}
 
