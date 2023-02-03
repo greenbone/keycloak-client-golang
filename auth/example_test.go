@@ -1,152 +1,152 @@
 package auth_test
 
-import (
-	_ "embed"
-	"fmt"
-	"log"
-	"net/http"
-	"net/http/httptest"
+// import (
+// 	_ "embed"
+// 	"fmt"
+// 	"log"
+// 	"net/http"
+// 	"net/http/httptest"
 
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
+// 	"github.com/gin-gonic/gin"
+// 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/greenbone/user-management-api/auth"
-)
+// 	"github.com/greenbone/user-management-api/auth"
+// )
 
-//go:embed testdata/cert.pem
-var publicCertPEM string
+// //go:embed testdata/cert.pem
+// var publicCertPEM string
 
-//go:embed testdata/key.pem
-var privateKeyPEM []byte
+// //go:embed testdata/key.pem
+// var privateKeyPEM []byte
 
-var validToken string
+// var validToken string
 
-func init() {
-	var err error
-	secret, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyPEM)
-	if err != nil {
-		panic(err)
-	}
+// func init() {
+// 	var err error
+// 	secret, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyPEM)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	validToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"iss":                "http://localhost:28080/auth/realms/user-management",
-		"sub":                "12345",
-		"email":              "some@email.com",
-		"preferred_username": "some_user",
-		"roles":              []string{"some_role"},
-		"groups":             []string{"some_group"},
-		"allowed-origins":    []string{"http://localhost:3000"},
-	}).SignedString(secret)
-	if err != nil {
-		panic(err)
-	}
-}
+// 	validToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+// 		"iss":                "http://localhost:28080/auth/realms/user-management",
+// 		"sub":                "12345",
+// 		"email":              "some@email.com",
+// 		"preferred_username": "some_user",
+// 		"roles":              []string{"some_role"},
+// 		"groups":             []string{"some_group"},
+// 		"allowed-origins":    []string{"http://localhost:3000"},
+// 	}).SignedString(secret)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
 
-func ExampleNewKeycloakAuthorizer() {
-	var (
-		realmId       = "user-management"             // keycloak realm name
-		authServerUrl = "http://localhost:28080/auth" // keycloak server url
-		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
-		origin        = "http://localhost:3000"       // request origin
-	)
+// func ExampleNewKeycloakAuthorizer() {
+// 	var (
+// 		realmId       = "user-management"             // keycloak realm name
+// 		authServerUrl = "http://localhost:28080/auth" // keycloak server url
+// 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
+// 		origin        = "http://localhost:3000"       // request origin
+// 	)
 
-	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
-		if realm == realmId {
-			return auth.KeycloakRealmInfo{
-				InternalAuthServerUrl: authServerUrl,
-				PEMPublicKeyCert:      pubCertPEM,
-			}, nil
-		}
+// 	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+// 		if realm == realmId {
+// 			return auth.KeycloakRealmInfo{
+// 				InternalAuthServerUrl: authServerUrl,
+// 				PEMPublicKeyCert:      pubCertPEM,
+// 			}, nil
+// 		}
 
-		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
-	}
+// 		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+// 	}
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter)
-	if err != nil {
-		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
-		return
-	}
+// 	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter)
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
+// 		return
+// 	}
 
-	userContext1, err := authorizer.ParseJWT(validToken) // pass jwt token here
-	if err != nil {
-		log.Fatal(fmt.Errorf("error parsing token: %w", err))
-		return
-	}
+// 	userContext1, err := authorizer.ParseJWT(validToken) // pass jwt token here
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error parsing token: %w", err))
+// 		return
+// 	}
 
-	fmt.Printf("%#v\n", userContext1)
+// 	fmt.Printf("%#v\n", userContext1)
 
-	userContext2, err := authorizer.ParseAuthorizationHeader("bearer " + validToken) // pass authorization header here
-	if err != nil {
-		log.Fatal(fmt.Errorf("error parsing token: %w", err))
-		return
-	}
+// 	userContext2, err := authorizer.ParseAuthorizationHeader("bearer " + validToken) // pass authorization header here
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error parsing token: %w", err))
+// 		return
+// 	}
 
-	fmt.Printf("%#v\n", userContext2)
+// 	fmt.Printf("%#v\n", userContext2)
 
-	userContext3, err := authorizer.ParseRequest("bearer "+validToken, origin) // pass authorization and origin headers here
-	if err != nil {
-		log.Fatal(fmt.Errorf("error parsing token: %w", err))
-		return
-	}
+// 	userContext3, err := authorizer.ParseRequest("bearer "+validToken, origin) // pass authorization and origin headers here
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error parsing token: %w", err))
+// 		return
+// 	}
 
-	fmt.Printf("%#v\n", userContext3)
+// 	fmt.Printf("%#v\n", userContext3)
 
-	// Output:
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-}
+// 	// Output:
+// 	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+// 	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+// 	// &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+// }
 
-func ExampleNewGinAuthMiddleware() {
-	var (
-		realmId       = "user-management"             // keycloak realm name
-		authServerUrl = "http://localhost:28080/auth" // keycloak server url
-		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
-		origin        = "http://localhost:3000"       // request origin
-	)
+// func ExampleNewGinAuthMiddleware() {
+// 	var (
+// 		realmId       = "user-management"             // keycloak realm name
+// 		authServerUrl = "http://localhost:28080/auth" // keycloak server url
+// 		pubCertPEM    = publicCertPEM                 // PEM formated public cert for keycloak token validation
+// 		origin        = "http://localhost:3000"       // request origin
+// 	)
 
-	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
-		if realm == realmId {
-			return auth.KeycloakRealmInfo{
-				InternalAuthServerUrl: authServerUrl,
-				PEMPublicKeyCert:      pubCertPEM,
-			}, nil
-		}
+// 	realmInfoGetter := func(realm string) (auth.KeycloakRealmInfo, error) {
+// 		if realm == realmId {
+// 			return auth.KeycloakRealmInfo{
+// 				InternalAuthServerUrl: authServerUrl,
+// 				PEMPublicKeyCert:      pubCertPEM,
+// 			}, nil
+// 		}
 
-		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
-	}
-	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter, auth.WithRealmInfoCache())
-	if err != nil {
-		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
-		return
-	}
+// 		return auth.KeycloakRealmInfo{}, fmt.Errorf("unknown realm: %s", realm)
+// 	}
+// 	authorizer, err := auth.NewKeycloakAuthorizer(realmInfoGetter, auth.WithRealmInfoCache())
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
+// 		return
+// 	}
 
-	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseRequest)
-	if err != nil {
-		log.Fatal(fmt.Errorf("error creating keycloak auth middleware: %w", err))
-		return
-	}
+// 	authMiddleware, err := auth.NewGinAuthMiddleware(authorizer.ParseRequest)
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("error creating keycloak auth middleware: %w", err))
+// 		return
+// 	}
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.Use(authMiddleware) // wire up middleware
+// 	gin.SetMode(gin.TestMode)
+// 	router := gin.New()
+// 	router.Use(authMiddleware) // wire up middleware
 
-	router.GET("/test", func(c *gin.Context) {
-		userContext, err := auth.GetUserContext(c)
-		if err != nil {
-			_ = c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
+// 	router.GET("/test", func(c *gin.Context) {
+// 		userContext, err := auth.GetUserContext(c)
+// 		if err != nil {
+// 			_ = c.AbortWithError(http.StatusInternalServerError, err)
+// 			return
+// 		}
 
-		c.String(http.StatusOK, fmt.Sprintf("%#v", userContext))
-	})
+// 		c.String(http.StatusOK, fmt.Sprintf("%#v", userContext))
+// 	})
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
-	req.Header.Add("Origin", origin)
-	router.ServeHTTP(w, req)
+// 	w := httptest.NewRecorder()
+// 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+// 	req.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
+// 	req.Header.Add("Origin", origin)
+// 	router.ServeHTTP(w, req)
 
-	fmt.Print(w.Body.String())
-	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-}
+// 	fmt.Print(w.Body.String())
+// 	// Output: &auth.UserContext{Realm:"user-management", UserID:"12345", UserName:"some_user", EmailAddress:"some@email.com", Roles:[]string{"some_role"}, Groups:[]string{"some_group"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+// }

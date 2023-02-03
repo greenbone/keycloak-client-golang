@@ -3,9 +3,13 @@ module github.com/greenbone/user-management-api
 go 1.19
 
 require (
+	github.com/Nerzal/gocloak/v11 v11.2.0
 	github.com/Nerzal/gocloak/v12 v12.0.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/golang-jwt/jwt/v4 v4.4.3
+	github.com/jarcoal/httpmock v1.2.0
+	github.com/samber/lo v1.37.0
+	github.com/sanity-io/litter v1.5.5
 	github.com/stretchr/testify v1.8.1
 )
 
@@ -29,6 +33,7 @@ require (
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
+	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.0.0-20221019024206-cb67ada4b0ad // indirect
 	golang.org/x/sys v0.0.0-20221010170243-090e33056c14 // indirect
 	golang.org/x/text v0.3.7 // indirect

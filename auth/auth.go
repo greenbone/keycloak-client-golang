@@ -123,33 +123,16 @@ func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (*UserC
 	}
 	claims := jwtToken.Claims.(*customClaims)
 
-	parts := strings.Split(claims.RegisteredClaims.Issuer, "/")
-	realm := parts[len(parts)-1]
-	if realm == "" {
-		return nil, fmt.Errorf("token doesn't contain realm info")
-	}
-
-	cc := customClaims{}
-	a.client.DecodeAccessTokenCustomClaims(ctx, token, a.realmInfo.RealmId, &cc)
-
-	// realmInfo, err := a.getRealmInfo(realm)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("get realm info: %w", err)
-	// }
-
-	_, err = jwt.Parse(token, func(*jwt.Token) (interface{}, error) {
-		return realmInfo.publicKey, nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("validation of token failed: %w", err)
-	}
-
-	if claims.RegisteredClaims.Issuer != realmInfo.tokenIssuer {
+	if claims.RegisteredClaims.Issuer != a.realmInfo.tokenIssuer {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
+	if _, _, err := a.client.DecodeAccessToken(ctx, token, a.realmInfo.RealmId); err != nil {
+		return nil, fmt.Errorf("validation of token failed: %w", err)
+	}
+
 	return &UserContext{
-		Realm:          realm,
+		Realm:          a.realmInfo.RealmId,
 		UserID:         claims.UserId,
 		UserName:       claims.UserName,
 		EmailAddress:   claims.Email,
