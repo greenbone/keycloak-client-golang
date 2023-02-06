@@ -32,6 +32,10 @@ var (
 )
 
 const (
+	validRealm  = "user-management"
+	validUrl    = "http://keycloak:8080/auth"
+	validOrigin = "http://localhost:3000"
+
 	publicKeyID  = "OMTg5TWEm1TZeqeb2zuJJFX1ZxOwDs_IfPIgJ0uIFU0"
 	publicKeyALG = "RS256"
 )
@@ -59,7 +63,6 @@ func init() {
 	}
 
 	expiredToken, err = getToken(jwt.MapClaims{
-		"kid": publicKeyID,
 		"iss": validUrl + "/realms/" + validRealm,
 		"iat": 1500000000,
 		"exp": 1600000000,
@@ -69,7 +72,6 @@ func init() {
 	}
 
 	invalidClaimsToken, err = getToken(jwt.MapClaims{
-		"kid":    publicKeyID,
 		"email":  12345,
 		"roles":  1,
 		"groups": 2,
@@ -79,7 +81,6 @@ func init() {
 	}
 
 	invalidIssuerToken, err = getToken(jwt.MapClaims{
-		"kid": publicKeyID,
 		"iss": "invalid_issuer",
 	})
 	if err != nil {
@@ -87,7 +88,6 @@ func init() {
 	}
 
 	invalidRealmToken, err = getToken(jwt.MapClaims{
-		"kid": publicKeyID,
 		"iss": "http://invalid_url/realms/" + validRealm,
 	})
 	if err != nil {
@@ -95,7 +95,6 @@ func init() {
 	}
 
 	noRealmToken, err = getToken(jwt.MapClaims{
-		"kid": publicKeyID,
 		"iss": "",
 	})
 	if err != nil {
@@ -103,7 +102,6 @@ func init() {
 	}
 
 	invalidSignatureToken, err = getToken(jwt.MapClaims{
-		"kid": publicKeyID,
 		"iss": validUrl + "/realms/" + validRealm,
 	})
 	if err != nil {
@@ -112,7 +110,6 @@ func init() {
 	invalidSignatureToken += "XX" // malform signature
 
 	validClaims := jwt.MapClaims{
-		"kid":                publicKeyID,
 		"iss":                validUrl + "/realms/" + validRealm,
 		"sub":                "1927ed8a-3f1f-4846-8433-db290ea5ff90",
 		"email":              "initial@host.local",
