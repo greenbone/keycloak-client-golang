@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"testing"
 

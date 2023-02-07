@@ -40,17 +40,29 @@ func (i *KeycloakRealmInfo) validate() error {
 
 // NewKeycloakAuthorizer creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with public cert from keycloak.
 // It also checks if Origin header mathes allowed origins from the JWT.
-func NewKeycloakAuthorizer(realmInfo KeycloakRealmInfo) (*KeycloakAuthorizer, error) {
+func NewKeycloakAuthorizer(realmInfo KeycloakRealmInfo, options ...func(*KeycloakAuthorizer)) (*KeycloakAuthorizer, error) {
 	if err := realmInfo.validate(); err != nil {
 		return nil, fmt.Errorf("invalid realm info: %w", err)
 	}
 
 	client := gocloak.NewClient(realmInfo.AuthServerInternalUrl)
 
-	return &KeycloakAuthorizer{
+	authorizer := &KeycloakAuthorizer{
 		realmInfo: realmInfo,
 		client:    client,
-	}, nil
+	}
+
+	for _, o := range options {
+		o(authorizer)
+	}
+
+	return authorizer, nil
+}
+
+func ConfigureGoCloak(f func(c *gocloak.GoCloak)) func(a *KeycloakAuthorizer) {
+	return func(a *KeycloakAuthorizer) {
+		f(a.client)
+	}
 }
 
 func (a *KeycloakAuthorizer) parseAuthorizationHeader(authorizationHeader string) (string, error) {

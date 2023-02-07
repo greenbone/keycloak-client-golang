@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,8 +26,11 @@ func TestGinAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("No header", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) { return &UserContext{}, nil })
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
+			return &UserContext{}, nil
+		}
 
+		auth, err := NewGinAuthMiddleware(parseRequestFunc)
 		require.NoError(t, err)
 		require.NotNil(t, auth)
 
@@ -43,8 +47,11 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("Failed auth", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) { return nil, errors.New("test error") })
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
+			return nil, errors.New("test error")
+		}
 
+		auth, err := NewGinAuthMiddleware(parseRequestFunc)
 		require.NoError(t, err)
 		require.NotNil(t, auth)
 
@@ -62,7 +69,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		auth, err := NewGinAuthMiddleware(func(auth string, origin string) (*UserContext, error) {
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
 			return &UserContext{
 				Realm:        "user-management",
 				UserID:       "12345",
@@ -71,8 +78,9 @@ func TestGinAuthMiddleware(t *testing.T) {
 				Roles:        []string{"some_role"},
 				Groups:       []string{"some_group"},
 			}, nil
-		})
+		}
 
+		auth, err := NewGinAuthMiddleware(parseRequestFunc)
 		require.NoError(t, err)
 		require.NotNil(t, auth)
 

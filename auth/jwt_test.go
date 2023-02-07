@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
-	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -12,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Nerzal/gocloak/v11"
+	"github.com/Nerzal/gocloak/v12"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jarcoal/httpmock"
 	"github.com/samber/lo"
