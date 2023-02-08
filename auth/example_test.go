@@ -23,12 +23,9 @@ import (
 )
 
 func setupToken() (token string, clean func()) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
+	privateKey := newPrivateKey()
 
-	validToken, err := getToken(jwt.MapClaims{
+	validToken := getToken(jwt.MapClaims{
 		"iss":                "http://localhost:28080/auth/realms/user-management",
 		"sub":                "1927ed8a-3f1f-4846-8433-db290ea5ff90",
 		"email":              "initial@host.local",
@@ -37,9 +34,6 @@ func setupToken() (token string, clean func()) {
 		"groups":             []string{"user-management-initial"},
 		"allowed-origins":    []string{"http://localhost:3000"},
 	}, privateKey)
-	if err != nil {
-		panic(err)
-	}
 
 	cleanUp := mockKeycloak(privateKey.PublicKey)
 
@@ -161,11 +155,16 @@ func newPrivateKey() *rsa.PrivateKey {
 	return privateKey
 }
 
-func getToken(claims jwt.MapClaims, privateKey *rsa.PrivateKey) (string, error) {
+func getToken(claims jwt.MapClaims, privateKey *rsa.PrivateKey) string {
 	token := jwt.NewWithClaims(jwt.GetSigningMethod(publicKeyALG), claims)
 	token.Header["kid"] = publicKeyID
 
-	return token.SignedString(privateKey) //nolint
+	tokenString, err := token.SignedString(privateKey)
+	if err != nil {
+		panic(err)
+	}
+
+	return tokenString
 }
 
 func getBase64E(e int) string {
