@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 
 // NewGinAuthMiddleware creates a new Gin middleware to authorize each request via Authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token
 // it sets the UserContext with extracted token claims in gin context. Use GetUserContext on gin.Context to extract this data
-func NewGinAuthMiddleware(parseRequestFunc func(authorizationHeader string, originHeader string) (*UserContext, error)) (gin.HandlerFunc, error) {
+func NewGinAuthMiddleware(parseRequestFunc func(ctx context.Context, authorizationHeader string, originHeader string) (*UserContext, error)) (gin.HandlerFunc, error) {
 	if parseRequestFunc == nil {
 		return nil, errors.New("parseHeaderFunc cannot be nil")
 	}
@@ -26,7 +27,7 @@ func NewGinAuthMiddleware(parseRequestFunc func(authorizationHeader string, orig
 			return
 		}
 
-		userContext, err := parseRequestFunc(header.Authorization, header.Origin)
+		userContext, err := parseRequestFunc(ctx, header.Authorization, header.Origin)
 		if err != nil {
 			_ = ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("authorization failed: %w", err))
 			return

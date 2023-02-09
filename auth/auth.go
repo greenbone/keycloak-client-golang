@@ -1,76 +1,68 @@
 package auth
 
 import (
-	"crypto/rsa"
-	"errors"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
+	"github.com/Nerzal/gocloak/v12"
 	"github.com/golang-jwt/jwt/v4"
 )
 
 // KeycloakAuthorizer is used to validate if JWT has a correct signature and is valid and returns keycloak claims
 type KeycloakAuthorizer struct {
-	infoGetter RealmInfoGetter
-	cache      bool
-	cacheMap   map[string]KeycloakRealmInfo
+	realmInfo KeycloakRealmInfo
+	client    *gocloak.GoCloak
 }
 
 // KeycloakRealmInfo provides keycloak realm and server information
 type KeycloakRealmInfo struct {
-	AuthServerUrl    string
-	PEMPublicKeyCert string
-	realm            string
-	tokenIssuer      string
-	publicKey        *rsa.PublicKey
+	RealmId               string // RealmId is the realm name that is passed to services via env vars
+	AuthServerInternalUrl string // AuthServerInternalUrl should point to keycloak auth server on internal (not public) network, e.g. http://keycloak:8080/auth
+	tokenIssuer           string
 }
 
-func (i *KeycloakRealmInfo) validate(realm string) error {
-	authUrl, err := url.ParseRequestURI(i.AuthServerUrl)
+func (i *KeycloakRealmInfo) validate() error {
+	if i.RealmId == "" {
+		return fmt.Errorf("realm id cannot be empty")
+	}
+
+	authUrl, err := url.ParseRequestURI(i.AuthServerInternalUrl)
 	if err != nil {
 		return fmt.Errorf("couldn't parse auth server url: %w", err)
 	}
 
-	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(i.PEMPublicKeyCert))
-	if err != nil {
-		return fmt.Errorf("couldn't parse rsa pubkey from pem cert: %w", err)
-	}
-
-	i.realm = realm
-	i.publicKey = publicKey
-	i.tokenIssuer = authUrl.JoinPath("/realms/" + realm).String()
+	i.tokenIssuer = authUrl.JoinPath("/realms/" + i.RealmId).String()
 
 	return nil
 }
 
-type RealmInfoGetter func(realm string) (KeycloakRealmInfo, error)
-
-type KeycloakAuthorizerOption func(f *KeycloakAuthorizer)
-
-func WithRealmInfoCache() KeycloakAuthorizerOption {
-	return func(a *KeycloakAuthorizer) {
-		a.cache = true
-		a.cacheMap = make(map[string]KeycloakRealmInfo)
+// NewKeycloakAuthorizer creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with public cert from keycloak.
+// It also checks if Origin header mathes allowed origins from the JWT.
+func NewKeycloakAuthorizer(realmInfo KeycloakRealmInfo, options ...func(*KeycloakAuthorizer)) (*KeycloakAuthorizer, error) {
+	if err := realmInfo.validate(); err != nil {
+		return nil, fmt.Errorf("invalid realm info: %w", err)
 	}
-}
 
-// NewKeycloakAuthorizer creates a new authorizer that checks if issuer is correct keycloak instance and realm and validates JWT signature with PEM formated public cert from keycloak.
-// It also checks if Origin header mathes allowed origins from the JWT. It works for multiple realms and caches the realm information if cache is enabled.
-func NewKeycloakAuthorizer(infoGetter RealmInfoGetter, opts ...KeycloakAuthorizerOption) (*KeycloakAuthorizer, error) {
-	if infoGetter == nil {
-		return nil, errors.New("realm info getter cannot be nil")
-	}
+	client := gocloak.NewClient(realmInfo.AuthServerInternalUrl)
 
 	authorizer := &KeycloakAuthorizer{
-		infoGetter: infoGetter,
+		realmInfo: realmInfo,
+		client:    client,
 	}
 
-	for _, opt := range opts {
-		opt(authorizer)
+	for _, o := range options {
+		o(authorizer)
 	}
 
 	return authorizer, nil
+}
+
+func ConfigureGoCloak(f func(c *gocloak.GoCloak)) func(a *KeycloakAuthorizer) {
+	return func(a *KeycloakAuthorizer) {
+		f(a.client)
+	}
 }
 
 func (a *KeycloakAuthorizer) parseAuthorizationHeader(authorizationHeader string) (string, error) {
@@ -85,13 +77,13 @@ func (a *KeycloakAuthorizer) parseAuthorizationHeader(authorizationHeader string
 }
 
 // ParseRequest parses a request (authorization header and origin of the call), validates JWT and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseRequest(authorizationHeader string, originHeader string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHeader string, originHeader string) (*UserContext, error) {
 	token, err := a.parseAuthorizationHeader(authorizationHeader)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse authorization header: %w", err)
 	}
 
-	userCtx, err := a.ParseJWT(token)
+	userCtx, err := a.ParseJWT(ctx, token)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse token: %w", err)
 	}
@@ -111,13 +103,13 @@ func (a *KeycloakAuthorizer) ParseRequest(authorizationHeader string, originHead
 }
 
 // ParseAuthorizationHeader parser an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseAuthorizationHeader(ctx context.Context, authHeader string) (*UserContext, error) {
 	token, err := a.parseAuthorizationHeader(authHeader)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse header: %w", err)
 	}
 
-	userCtx, err := a.ParseJWT(token)
+	userCtx, err := a.ParseJWT(ctx, token)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse token: %w", err)
 	}
@@ -126,7 +118,7 @@ func (a *KeycloakAuthorizer) ParseAuthorizationHeader(authHeader string) (*UserC
 }
 
 // ParseJWT parses and validated JWT token and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (*UserContext, error) {
 	type customClaims struct {
 		jwt.RegisteredClaims
 		UserId         string   `json:"sub"`
@@ -143,30 +135,16 @@ func (a *KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 	}
 	claims := jwtToken.Claims.(*customClaims)
 
-	parts := strings.Split(claims.RegisteredClaims.Issuer, "/")
-	realm := parts[len(parts)-1]
-	if realm == "" {
-		return nil, fmt.Errorf("token doesn't contain realm info")
-	}
-
-	realmInfo, err := a.getRealmInfo(realm)
-	if err != nil {
-		return nil, fmt.Errorf("get realm info: %w", err)
-	}
-
-	_, err = jwt.Parse(token, func(*jwt.Token) (interface{}, error) {
-		return realmInfo.publicKey, nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("validation of token failed: %w", err)
-	}
-
-	if claims.RegisteredClaims.Issuer != realmInfo.tokenIssuer {
+	if claims.RegisteredClaims.Issuer != a.realmInfo.tokenIssuer {
 		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
+	if _, _, err := a.client.DecodeAccessToken(ctx, token, a.realmInfo.RealmId); err != nil {
+		return nil, fmt.Errorf("validation of token failed: %w", err)
+	}
+
 	return &UserContext{
-		Realm:          realm,
+		Realm:          a.realmInfo.RealmId,
 		UserID:         claims.UserId,
 		UserName:       claims.UserName,
 		EmailAddress:   claims.Email,
@@ -174,26 +152,4 @@ func (a *KeycloakAuthorizer) ParseJWT(token string) (*UserContext, error) {
 		Groups:         claims.Groups,
 		AllowedOrigins: claims.AllowedOrigins,
 	}, nil
-}
-
-func (a *KeycloakAuthorizer) getRealmInfo(realm string) (*KeycloakRealmInfo, error) {
-	if a.cache {
-		if realmInfo, ok := a.cacheMap[realm]; ok {
-			return &realmInfo, nil
-		}
-	}
-
-	realmInfo, err := a.infoGetter(realm)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get info for realm: %w", err)
-	}
-	if err := realmInfo.validate(realm); err != nil {
-		return nil, fmt.Errorf("invalid realm info: %w", err)
-	}
-
-	if a.cache {
-		a.cacheMap[realm] = realmInfo
-	}
-
-	return &realmInfo, nil
 }
