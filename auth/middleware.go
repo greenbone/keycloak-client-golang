@@ -23,7 +23,7 @@ func NewGinAuthMiddleware(parseRequestFunc func(ctx context.Context, authorizati
 		}
 
 		if err := ctx.ShouldBindHeader(&header); err != nil {
-			_ = ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("could not bind header: %w", err))
+			_ = ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("could not bind header: %w", err))
 			return
 		}
 
