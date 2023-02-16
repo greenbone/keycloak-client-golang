@@ -47,7 +47,7 @@ func ExampleNewKeycloakAuthorizer() {
 	var (
 		realmId = "user-management"             // keycloak realm name
 		authUrl = "http://localhost:28080/auth" // keycloak server internal url
-		origin  = "http://localhost:3000"       // request origin
+		origin  = "http://localhost:3000"       // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{
@@ -97,7 +97,7 @@ func ExampleNewGinAuthMiddleware() {
 	var (
 		realmId = "user-management"             // keycloak realm name
 		authUrl = "http://localhost:28080/auth" // keycloak server internal url
-		origin  = "http://localhost:3000"       // request origin
+		origin  = "http://localhost:3000"       // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{

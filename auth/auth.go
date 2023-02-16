@@ -76,7 +76,7 @@ func (a *KeycloakAuthorizer) parseAuthorizationHeader(authorizationHeader string
 	return fields[1], nil
 }
 
-// ParseRequest parses a request (authorization header and origin of the call), validates JWT and returns UserContext with extracted token claims
+// ParseRequest parses a request (Authorization header - required; Origin header - optional), validates JWT and returns UserContext with extracted token claims
 func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHeader string, originHeader string) (*UserContext, error) {
 	token, err := a.parseAuthorizationHeader(authorizationHeader)
 	if err != nil {
@@ -88,15 +88,17 @@ func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHead
 		return nil, fmt.Errorf("couldn't parse token: %w", err)
 	}
 
-	correctOrigin := false
-	for _, origin := range userCtx.AllowedOrigins {
-		if originHeader == origin {
-			correctOrigin = true
-			break
+	if originHeader != "" {
+		correctOrigin := false
+		for _, origin := range userCtx.AllowedOrigins {
+			if originHeader == origin {
+				correctOrigin = true
+				break
+			}
 		}
-	}
-	if !correctOrigin {
-		return nil, fmt.Errorf("not allowed origin: %s", originHeader)
+		if !correctOrigin {
+			return nil, fmt.Errorf("not allowed origin: %s", originHeader)
+		}
 	}
 
 	return userCtx, nil

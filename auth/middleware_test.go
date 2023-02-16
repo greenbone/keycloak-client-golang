@@ -43,7 +43,6 @@ func TestGinAuthMiddleware(t *testing.T) {
 		require.Len(t, ctx.Errors, 1)
 		assert.ErrorContains(t, ctx.Errors[0], "could not bind header")
 		assert.ErrorContains(t, ctx.Errors[0], "Authorization")
-		assert.ErrorContains(t, ctx.Errors[0], "Origin")
 	})
 
 	t.Run("Failed auth", func(t *testing.T) {
