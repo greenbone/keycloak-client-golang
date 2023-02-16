@@ -213,6 +213,19 @@ func TestParseRequest(t *testing.T) {
 		assert.Nil(t, userContext)
 	})
 
+	t.Run("OK without origin", func(t *testing.T) {
+		userContext, err := authorizer.ParseRequest(context.Background(), fmt.Sprintf("bearer %s", validToken), "")
+		require.NoError(t, err)
+		require.NotNil(t, userContext)
+
+		assert.Equal(t, "user-management", userContext.Realm)
+		assert.Equal(t, "1927ed8a-3f1f-4846-8433-db290ea5ff90", userContext.UserID)
+		assert.Equal(t, "initial@host.local", userContext.EmailAddress)
+		assert.Equal(t, "initial", userContext.UserName)
+		assert.ElementsMatch(t, []string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, userContext.Roles)
+		assert.ElementsMatch(t, []string{"user-management-initial"}, userContext.Groups)
+	})
+
 	t.Run("OK", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), fmt.Sprintf("bearer %s", validToken), validOrigin)
 		require.NoError(t, err)
