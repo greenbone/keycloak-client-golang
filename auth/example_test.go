@@ -85,9 +85,9 @@ func ExampleNewKeycloakAuthorizer() {
 
 	fmt.Printf("%#v\n", userContext3)
 	// Output:
-	// &auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
-	// &auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
 }
 
 func ExampleNewGinAuthMiddleware() {
@@ -139,7 +139,7 @@ func ExampleNewGinAuthMiddleware() {
 
 	fmt.Print(w.Body.String())
 	// Output:
-	// &auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
+	// auth.UserContext{Realm:"user-management", UserID:"1927ed8a-3f1f-4846-8433-db290ea5ff90", UserName:"initial", EmailAddress:"initial@host.local", Roles:[]string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, Groups:[]string{"user-management-initial"}, AllowedOrigins:[]string{"http://localhost:3000"}}
 }
 
 const (
