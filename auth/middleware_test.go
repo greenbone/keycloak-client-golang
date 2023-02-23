@@ -26,8 +26,8 @@ func TestGinAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("No header", func(t *testing.T) {
-		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
-			return &UserContext{}, nil
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (UserContext, error) {
+			return UserContext{}, nil
 		}
 
 		auth, err := NewGinAuthMiddleware(parseRequestFunc)
@@ -46,8 +46,8 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("Failed auth", func(t *testing.T) {
-		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
-			return nil, errors.New("test error")
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (UserContext, error) {
+			return UserContext{}, errors.New("test error")
 		}
 
 		auth, err := NewGinAuthMiddleware(parseRequestFunc)
@@ -68,8 +68,8 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		parseRequestFunc := func(ctx context.Context, auth string, origin string) (*UserContext, error) {
-			return &UserContext{
+		parseRequestFunc := func(ctx context.Context, auth string, origin string) (UserContext, error) {
+			return UserContext{
 				Realm:        "user-management",
 				UserID:       "12345",
 				EmailAddress: "some@email.com",
@@ -95,7 +95,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 
 		userContext, err := GetUserContext(ctx)
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		assert.Equal(t, "12345", userContext.UserID)
 		assert.Equal(t, "some@email.com", userContext.EmailAddress)

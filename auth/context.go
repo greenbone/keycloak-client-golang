@@ -19,21 +19,22 @@ type UserContext struct {
 	AllowedOrigins []string
 }
 
-func setUserContext(ctx *gin.Context, userCtx UserContext) {
+// SetUserContext adds provided UserContext to gin.Context
+func SetUserContext(ctx *gin.Context, userCtx UserContext) {
 	ctx.Set(userContextKey, userCtx)
 }
 
 // GetUserContext extract UserContext from gin.Context. NOTE: it is immutable, you cannot change the existing context
-func GetUserContext(ctx *gin.Context) (*UserContext, error) {
+func GetUserContext(ctx *gin.Context) (UserContext, error) {
 	v, ok := ctx.Get(userContextKey)
 	if !ok {
-		return nil, errors.New("user context data not found")
+		return UserContext{}, errors.New("user context data not found")
 	}
 
 	userData, ok := v.(UserContext)
 	if !ok {
-		return nil, errors.New("user context data has incorrect type")
+		return UserContext{}, errors.New("user context data has incorrect type")
 	}
 
-	return &userData, nil
+	return userData, nil
 }

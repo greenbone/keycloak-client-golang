@@ -13,17 +13,17 @@ func TestUserContext(t *testing.T) {
 		userContext, err := GetUserContext(&gin.Context{})
 
 		require.ErrorContains(t, err, "user context data not found")
-		require.Nil(t, userContext)
+		require.Zero(t, userContext)
 	})
 
 	t.Run("With user context", func(t *testing.T) {
 		ctx := &gin.Context{}
-		setUserContext(ctx, UserContext{UserName: "user1"})
+		SetUserContext(ctx, UserContext{UserName: "user1"})
 
 		userContext, err := GetUserContext(ctx)
 
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 		assert.Equal(t, "user1", userContext.UserName)
 	})
 
@@ -34,18 +34,18 @@ func TestUserContext(t *testing.T) {
 		userContext, err := GetUserContext(ctx)
 
 		require.ErrorContains(t, err, "user context data has incorrect type")
-		require.Nil(t, userContext)
+		require.Zero(t, userContext)
 	})
 
 	t.Run("User context immutable", func(t *testing.T) {
 		ctx := &gin.Context{}
 		originalContext := UserContext{UserName: "user1"}
-		setUserContext(ctx, originalContext)
+		SetUserContext(ctx, originalContext)
 
 		userContext, err := GetUserContext(ctx)
 
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		userContext.UserName = "user2"
 		assert.Equal(t, "user2", userContext.UserName)

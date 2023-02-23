@@ -63,7 +63,7 @@ func TestParseJWT(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), noRealmToken)
 
 		assert.ErrorContains(t, err, "invalid domain of issuer")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Wrong algorithm", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestParseJWT(t *testing.T) {
 
 		assert.ErrorContains(t, err, "validation of token failed")
 		assert.ErrorContains(t, err, "cannot find a key to decode the token")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Wrong signature", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestParseJWT(t *testing.T) {
 
 		assert.ErrorContains(t, err, "validation of token failed")
 		assert.ErrorContains(t, err, "crypto/rsa: verification error")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Expired token", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestParseJWT(t *testing.T) {
 
 		assert.ErrorContains(t, err, "validation of token failed")
 		assert.ErrorContains(t, err, "Token is expired")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid claims", func(t *testing.T) {
@@ -95,28 +95,28 @@ func TestParseJWT(t *testing.T) {
 
 		assert.ErrorContains(t, err, "parsing of token failed")
 		assert.ErrorContains(t, err, "cannot unmarshal number")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid issuer", func(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), invalidIssuerToken)
 
 		assert.ErrorContains(t, err, "invalid domain of issuer")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid realm", func(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), invalidRealmToken)
 
 		assert.ErrorContains(t, err, "invalid domain of issuer")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("OK", func(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), validToken)
 
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		assert.Equal(t, "user-management", userContext.Realm)
 		assert.Equal(t, "1927ed8a-3f1f-4846-8433-db290ea5ff90", userContext.UserID)
@@ -148,7 +148,7 @@ func TestParseAuthorizationHeader(t *testing.T) {
 				userContext, err := authorizer.ParseAuthorizationHeader(context.Background(), test)
 
 				assert.ErrorContains(t, err, "header contains invalid number of fields")
-				assert.Nil(t, userContext)
+				assert.Zero(t, userContext)
 			})
 		}
 	})
@@ -157,21 +157,21 @@ func TestParseAuthorizationHeader(t *testing.T) {
 		userContext, err := authorizer.ParseAuthorizationHeader(context.Background(), "not_bearer some_token")
 
 		assert.ErrorContains(t, err, "header contains invalid token type")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid token", func(t *testing.T) {
 		userContext, err := authorizer.ParseAuthorizationHeader(context.Background(), "bearer "+expiredToken)
 
 		assert.ErrorContains(t, err, "validation of token failed")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("OK", func(t *testing.T) {
 		userContext, err := authorizer.ParseAuthorizationHeader(context.Background(), fmt.Sprintf("bearer %s", validToken))
 
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		assert.Equal(t, "user-management", userContext.Realm)
 		assert.Equal(t, "1927ed8a-3f1f-4846-8433-db290ea5ff90", userContext.UserID)
@@ -196,27 +196,27 @@ func TestParseRequest(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), "invalid", validOrigin)
 
 		assert.ErrorContains(t, err, "couldn't parse authorization header")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid token", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), "bearer invalid_token", validOrigin)
 
 		assert.ErrorContains(t, err, "couldn't parse token")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("Invalid origin", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), fmt.Sprintf("bearer %s", validToken), "http://invalid-origin.com")
 
 		assert.ErrorContains(t, err, "not allowed origin")
-		assert.Nil(t, userContext)
+		assert.Zero(t, userContext)
 	})
 
 	t.Run("OK without origin", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), fmt.Sprintf("bearer %s", validToken), "")
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		assert.Equal(t, "user-management", userContext.Realm)
 		assert.Equal(t, "1927ed8a-3f1f-4846-8433-db290ea5ff90", userContext.UserID)
@@ -229,7 +229,7 @@ func TestParseRequest(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), fmt.Sprintf("bearer %s", validToken), validOrigin)
 		require.NoError(t, err)
-		require.NotNil(t, userContext)
+		require.NotZero(t, userContext)
 
 		assert.Equal(t, "user-management", userContext.Realm)
 		assert.Equal(t, "1927ed8a-3f1f-4846-8433-db290ea5ff90", userContext.UserID)

@@ -77,15 +77,15 @@ func (a *KeycloakAuthorizer) parseAuthorizationHeader(authorizationHeader string
 }
 
 // ParseRequest parses a request (Authorization header - required; Origin header - optional), validates JWT and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHeader string, originHeader string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHeader string, originHeader string) (UserContext, error) {
 	token, err := a.parseAuthorizationHeader(authorizationHeader)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse authorization header: %w", err)
+		return UserContext{}, fmt.Errorf("couldn't parse authorization header: %w", err)
 	}
 
 	userCtx, err := a.ParseJWT(ctx, token)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse token: %w", err)
+		return UserContext{}, fmt.Errorf("couldn't parse token: %w", err)
 	}
 
 	if originHeader != "" {
@@ -97,7 +97,7 @@ func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHead
 			}
 		}
 		if !correctOrigin {
-			return nil, fmt.Errorf("not allowed origin: %s", originHeader)
+			return UserContext{}, fmt.Errorf("not allowed origin: %s", originHeader)
 		}
 	}
 
@@ -105,22 +105,22 @@ func (a *KeycloakAuthorizer) ParseRequest(ctx context.Context, authorizationHead
 }
 
 // ParseAuthorizationHeader parser an authorization header in format "BEARER JWT_TOKEN" where JWT_TOKEN is the keycloak auth token and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseAuthorizationHeader(ctx context.Context, authHeader string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseAuthorizationHeader(ctx context.Context, authHeader string) (UserContext, error) {
 	token, err := a.parseAuthorizationHeader(authHeader)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse header: %w", err)
+		return UserContext{}, fmt.Errorf("couldn't parse header: %w", err)
 	}
 
 	userCtx, err := a.ParseJWT(ctx, token)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse token: %w", err)
+		return UserContext{}, fmt.Errorf("couldn't parse token: %w", err)
 	}
 
 	return userCtx, nil
 }
 
 // ParseJWT parses and validated JWT token and returns UserContext with extracted token claims
-func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (*UserContext, error) {
+func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (UserContext, error) {
 	type customClaims struct {
 		jwt.RegisteredClaims
 		UserId         string   `json:"sub"`
@@ -133,19 +133,19 @@ func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (*UserC
 
 	jwtToken, _, err := jwt.NewParser().ParseUnverified(token, &customClaims{})
 	if err != nil {
-		return nil, fmt.Errorf("parsing of token failed: %w", err)
+		return UserContext{}, fmt.Errorf("parsing of token failed: %w", err)
 	}
 	claims := jwtToken.Claims.(*customClaims)
 
 	if claims.RegisteredClaims.Issuer != a.realmInfo.tokenIssuer {
-		return nil, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
+		return UserContext{}, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
 	}
 
 	if _, _, err := a.client.DecodeAccessToken(ctx, token, a.realmInfo.RealmId); err != nil {
-		return nil, fmt.Errorf("validation of token failed: %w", err)
+		return UserContext{}, fmt.Errorf("validation of token failed: %w", err)
 	}
 
-	return &UserContext{
+	return UserContext{
 		Realm:          a.realmInfo.RealmId,
 		UserID:         claims.UserId,
 		UserName:       claims.UserName,
