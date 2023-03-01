@@ -11,16 +11,27 @@ GOPRIVATE=github.com/greenbone
 GOOS=linux
 GOARCH=amd64
 
+GOTESTSUM       = go run gotest.tools/gotestsum@latest
+GOFUMPT         = go run mvdan.cc/gofumpt@latest
+GOIMPORTS       = go run golang.org/x/tools/cmd/goimports@latest
+GOLANGCI-LINT   = go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+GO-MOD-OUTDATED = go run github.com/psampaz/go-mod-outdated@latest
+GO-MOD-UPGRADE  = go run github.com/oligot/go-mod-upgrade@latest
+
 all: lint test build
 
 test: ## Run all tests
-	go test -v ./...
+	go test ./...
+#$(GOTESTSUM) -f dots-v2
+
+watch: ## Run tests and watch for changes
+	@$(GOTESTSUM) -f dots-v2; $(GOTESTSUM) -f dots-v2 --watch
 
 cover: ## Run cover
-	go test -cover ./... 
+	go test -cover ./...
 
 lint: ## Lint go code
-	golangci-lint run
+	$(GOLANGCI-LINT) run
 
 format: ## Format and tidy
 	go mod tidy && go fmt ./...
@@ -29,17 +40,11 @@ update: ## Update go dependencies
 	go get -u -t ./... && go mod tidy
 
 outdated: ## Show outdated go dependencies
-ifeq (, $(shell which go-mod-outdated))
-	go install github.com/psampaz/go-mod-outdated@latest
-endif
-	go list -u -m -json all | go-mod-outdated -update -direct
+#go list -u -f '{{if (and (not (or .Main .Indirect)) .Update)}}{{.Path}}: {{.Version}} -> {{.Update.Version}}{{end}}' -m all 2> /dev/null
+	go list -u -m -json all | $(GO-MOD-OUTDATED) -update -direct
 
-.PHONY: tools
-tools: ## Install tools
-ifeq (, $(shell which golangci-lint))
-	brew install golangci-lint
-endif
-	brew upgrade golangci-lint
+upgrade: ## Interactive go module upgrade
+	$(GO-MOD-UPGRADE)
 
 .PHONY: build
 build: ## Build go application
