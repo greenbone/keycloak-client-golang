@@ -26,8 +26,7 @@ format: ## Format and tidy
 	go mod tidy && go fmt ./...
 
 update: ## Update go dependencies
-	go mod tidy
-	go get -u all
+	go get -u -t ./... && go mod tidy
 
 outdated: ## Show outdated go dependencies
 ifeq (, $(shell which go-mod-outdated))
