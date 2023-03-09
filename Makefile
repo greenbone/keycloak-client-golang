@@ -22,7 +22,9 @@ all: lint test build
 
 test: ## Run all tests
 	go test ./...
-#$(GOTESTSUM) -f dots-v2
+
+test-alt: ## Run all tests
+	@$(GOTESTSUM) -f dots-v2
 
 watch: ## Run tests and watch for changes
 	@$(GOTESTSUM) -f dots-v2; $(GOTESTSUM) -f dots-v2 --watch
@@ -34,13 +36,18 @@ lint: ## Lint go code
 	$(GOLANGCI-LINT) run
 
 format: ## Format and tidy
-	go mod tidy && go fmt ./...
+	go mod tidy && $(GOIMPORTS) -l -w .
+
+format-gofumpt: ## Format with gofumpt
+	go mod tidy && $(GOFUMPT) -l -w .
 
 update: ## Update go dependencies
 	go get -u -t ./... && go mod tidy
 
+list-outdated: ## List outdated mods
+	go list -u -f '{{if (and (not (or .Main .Indirect)) .Update)}}{{.Path}}: {{.Version}} -> {{.Update.Version}}{{end}}' -m all 2> /dev/null
+
 outdated: ## Show outdated go dependencies
-#go list -u -f '{{if (and (not (or .Main .Indirect)) .Update)}}{{.Path}}: {{.Version}} -> {{.Update.Version}}{{end}}' -m all 2> /dev/null
 	go list -u -m -json all | $(GO-MOD-OUTDATED) -update -direct
 
 upgrade: ## Interactive go module upgrade
