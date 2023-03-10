@@ -31,9 +31,10 @@ var (
 )
 
 const (
-	validRealm  = "user-management"
-	validUrl    = "http://keycloak:8080/auth"
-	validOrigin = "http://localhost:3000"
+	validRealm       = "user-management"
+	validInternalUrl = "http://keycloak:8080/auth"
+	validPublicUrl   = "http://localhost:28080/auth"
+	validOrigin      = "http://localhost:3000"
 
 	publicKeyID  = "OMTg5TWEm1TZeqeb2zuJJFX1ZxOwDs_IfPIgJ0uIFU0"
 	publicKeyALG = "RS256"
@@ -55,14 +56,14 @@ func init() {
 	}
 
 	invalidAlgorithmToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iss": validUrl + "/realms/" + validRealm,
+		"iss": validPublicUrl + "/realms/" + validRealm,
 	}).SignedString([]byte("SOME_KEY"))
 	if err != nil {
 		panic(err)
 	}
 
 	expiredToken, err = getToken(jwt.MapClaims{
-		"iss": validUrl + "/realms/" + validRealm,
+		"iss": validPublicUrl + "/realms/" + validRealm,
 		"iat": 1500000000,
 		"exp": 1600000000,
 	})
@@ -101,7 +102,7 @@ func init() {
 	}
 
 	invalidSignatureToken, err = getToken(jwt.MapClaims{
-		"iss": validUrl + "/realms/" + validRealm,
+		"iss": validPublicUrl + "/realms/" + validRealm,
 	})
 	if err != nil {
 		panic(err)
@@ -109,7 +110,7 @@ func init() {
 	invalidSignatureToken += "XX" // malform signature
 
 	validClaims := jwt.MapClaims{
-		"iss":                validUrl + "/realms/" + validRealm,
+		"iss":                validPublicUrl + "/realms/" + validRealm,
 		"sub":                "1927ed8a-3f1f-4846-8433-db290ea5ff90",
 		"email":              "initial@host.local",
 		"preferred_username": "initial",
@@ -155,7 +156,7 @@ func FakeCertResponse(t *testing.T, authorizer *KeycloakAuthorizer) {
 
 	certResponder, err := httpmock.NewJsonResponder(200, certResponse)
 	require.NoError(t, err)
-	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", validUrl, validRealm), certResponder)
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", validInternalUrl, validRealm), certResponder)
 }
 
 // Sample of real cert response from keycloak

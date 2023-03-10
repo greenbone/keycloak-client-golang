@@ -12,7 +12,8 @@ import "github.com/greenbone/user-management-api/auth"
 func main() {
     realmInfo := auth.KeycloakRealmInfo{
         RealmId:               "user-management",             // keycloak realm name
-        AuthServerInternalUrl: "http://localhost:28080/auth", // keycloak server internal url
+        AuthServerInternalUrl: "http://keycloak:8080/auth",   // keycloak server internal url
+        AuthServerPublicUrl:   "http://localhost:28080/auth", // keycloak server public url (jwt issuer)
     }
     
     authorizer, err := auth.NewKeycloakAuthorizer(realmInfo)
