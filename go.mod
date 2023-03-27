@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/jarcoal/httpmock v1.3.0
-	github.com/samber/lo v1.37.0
+	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
 )
 
