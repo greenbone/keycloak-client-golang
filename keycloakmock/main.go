@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -20,17 +21,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
-type realm struct {
-	pubKey rsa.PublicKey
-	prvKey rsa.PrivateKey
-}
-
 var (
-	realms = make(map[string]realm)
-	mu     sync.Mutex
+	realmKeys = make(map[string]*rsa.PrivateKey)
+	userIDs   = make(map[string]string)
+	mu        sync.Mutex
+)
+
+// todo: to env vars
+const (
+	KeycloakPublicUrl = "http://localhost:28080/auth"
+	EmailDomain       = "host.local"
+	AllowedOrigin     = "http://localhost:3000"
 )
 
 func main() {
@@ -45,11 +50,115 @@ func main() {
 		realm := chi.URLParam(r, "realm")
 		w.Write([]byte(realm))
 	})
+
 	r.Post("/auth/realms/{realm}/protocol/openid-connect/token", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
 		r.ParseMultipartForm(0)
+
 		realm := chi.URLParam(r, "realm")
+		if realm == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, `{"error":"%s"}`, "realm cannot be empty")
+		}
+
 		userName := r.FormValue("username")
-		fmt.Fprintf(w, "%s - %v", realm, userName)
+		if userName == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, `{"error":"%s"}`, "username cannot be empty")
+		}
+
+		clientId := r.FormValue("client_id")
+		if clientId == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, `{"error":"%s"}`, "client_id cannot be empty")
+		}
+
+		mu.Lock()
+
+		var realmKey *rsa.PrivateKey
+		if key, ok := realmKeys[realm]; ok {
+			realmKey = key
+		} else {
+			realmKey = newPrivateKey()
+			realmKeys[realm] = realmKey
+		}
+
+		var userID string
+		if id, ok := userIDs[userName]; ok {
+			userID = id
+		} else {
+			userID = uuid.NewString()
+			userIDs[userName] = userID
+		}
+
+		mu.Unlock()
+
+		sessionID := uuid.NewString()
+
+		roles := []string{
+			"default-roles-" + realm,
+			"offline_access",
+			"uma_authorization",
+			"user",
+		}
+
+		now := time.Now().Unix()
+		lifetime := int64(60 * 60 * 24)
+
+		accessToken := getToken(claims{
+			ExpiresAt:                  now + lifetime,
+			IssuedAt:                   now,
+			ID:                         uuid.NewString(),
+			Issuer:                     fmt.Sprintf("%s/realms/%s", KeycloakPublicUrl, realm),
+			Audience:                   "account",
+			Subject:                    userID,
+			Type:                       "Bearer",
+			AuthorizedParty:            clientId,
+			SessionState:               sessionID,
+			AuthenticationContextClass: "1",
+			AllowedOrigins:             []string{"http://localhost:3000", AllowedOrigin},
+			RealmAccess: rolesAccess{
+				Roles: roles,
+			},
+			ResourceAccess: resourceAccess{
+				Account: rolesAccess{
+					Roles: []string{
+						"manage-account",
+						"manage-account-links",
+						"view-profile",
+					},
+				},
+			},
+			Scope:         "profile email",
+			SessionID:     sessionID,
+			EmailVerified: true,
+			Roles:         roles,
+			Groups:        []string{"default-group-" + realm},
+			UserName:      userName,
+			Email:         fmt.Sprintf("%s@%s", userName, EmailDomain),
+		}, realmKey)
+
+		res := token{
+			AccessToken:      accessToken,
+			RefreshToken:     "",
+			TokenType:        "Bearer",
+			ExpiresIn:        lifetime,
+			RefreshExpiresIn: lifetime,
+			NotBeforePolicy:  0,
+			SessionState:     sessionID,
+			Scope:            "profile email",
+		}
+
+		b, err := json.Marshal(res)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
 	})
 
 	srv := &http.Server{
@@ -94,7 +203,7 @@ func newPrivateKey() *rsa.PrivateKey {
 	return privateKey
 }
 
-func getToken(claims jwt.MapClaims, privateKey *rsa.PrivateKey) string {
+func getToken(claims jwt.Claims, privateKey *rsa.PrivateKey) string {
 	token := jwt.NewWithClaims(jwt.GetSigningMethod(publicKeyALG), claims)
 	token.Header["kid"] = publicKeyID
 
@@ -141,4 +250,47 @@ func getCertResponse(publicKey rsa.PublicKey) *gocloak.CertResponse {
 		},
 	}
 	return certResponse
+}
+
+type claims struct {
+	ExpiresAt                  int64          `json:"exp"`
+	IssuedAt                   int64          `json:"iat"`
+	ID                         string         `json:"jti"`
+	Issuer                     string         `json:"iss"`
+	Audience                   string         `json:"aud"`
+	Subject                    string         `json:"sub"`
+	Type                       string         `json:"typ"`
+	AuthorizedParty            string         `json:"azp"`
+	SessionState               string         `json:"session_state"`
+	AuthenticationContextClass string         `json:"acr"`
+	AllowedOrigins             []string       `json:"allowed-origins"`
+	RealmAccess                rolesAccess    `json:"realm_access"`
+	ResourceAccess             resourceAccess `json:"resource_access"`
+	Scope                      string         `json:"scope"`
+	SessionID                  string         `json:"sid"`
+	EmailVerified              bool           `json:"email_verified"`
+	Roles                      []string       `json:"roles"`
+	Groups                     []string       `json:"groups"`
+	UserName                   string         `json:"preffered_username"`
+	Email                      string         `json:"email"`
+}
+
+func (claims) Valid() error { return nil }
+
+type rolesAccess struct {
+	Roles []string `json:"roles"`
+}
+type resourceAccess struct {
+	Account rolesAccess `json:"account"`
+}
+
+type token struct {
+	AccessToken      string `json:"access_token"`
+	ExpiresIn        int64  `json:"expires_in"`
+	RefreshExpiresIn int64  `json:"refresh_expires_in"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"`
+	NotBeforePolicy  int    `json:"not-before-policy"`
+	SessionState     string `json:"session_state"`
+	Scope            string `json:"scope"`
 }

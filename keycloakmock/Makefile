@@ -8,13 +8,33 @@ GOPRIVATE=github.com/greenbone
 GOOS=linux
 GOARCH=amd64
 
+tools: ## Install tools
+ifeq (, $(shell which jq))
+	sudo apt install jq
+endif
+
 run: ## Runs the keycloak mock server
 	@go run .
 
-token: ## Obtain token from mock server
+token-resp: USER=initial
+token-resp: REALM=opensight-asset
+token-resp: CLIENT_ID=local-web
+token-resp: ## Obtain token from mock server
 	@curl -s \
-		-d "client_id=local-web" \
+		-d "client_id=$(CLIENT_ID)" \
 		-d "grant_type=password" \
-		-d "username=initial" \
+		-d "username=$(USER)" \
 		-d "password=password" \
-		"http://localhost:3333/auth/realms/opensight-asset/protocol/openid-connect/token"
+		"http://localhost:3333/auth/realms/$(REALM)/protocol/openid-connect/token"
+
+token: USER=initial
+token: REALM=opensight-asset
+token: CLIENT_ID=local-web
+token: tools ## Get and extract access token from mock keycloak
+	@$(MAKE) -s token-resp USER=$(USER) REALM=$(REALM) CLIENT_ID=$(CLIENT_ID) | jq -r .access_token
+
+token-decode: USER=initial
+token-decode: REALM=opensight-asset
+token-decode: CLIENT_ID=local-web
+token-decode: tools ## Get decoded access token from mock keycloak
+	@$(MAKE) -s token USER=$(USER) REALM=$(REALM) CLIENT_ID=$(CLIENT_ID) | cut -d. -f2 | base64 -d | jq
