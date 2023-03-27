@@ -26,10 +26,17 @@ import (
 )
 
 var (
-	realmKeys = make(map[string]*rsa.PrivateKey)
-	userIDs   = make(map[string]string)
-	mu        sync.Mutex
+	realms  = make(map[string]*realmData)
+	userIDs = make(map[string]string)
+	mu      sync.Mutex
 )
+
+type realmData struct {
+	accessPrivateKey *rsa.PrivateKey
+	accessKeyID      string
+	refreshSecret    []byte
+	refreshKeyID     string
+}
 
 // todo: to env vars
 const (
@@ -60,28 +67,38 @@ func main() {
 		if realm == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, `{"error":"%s"}`, "realm cannot be empty")
+			return
 		}
 
 		userName := r.FormValue("username")
 		if userName == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, `{"error":"%s"}`, "username cannot be empty")
+			return
 		}
 
 		clientId := r.FormValue("client_id")
 		if clientId == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, `{"error":"%s"}`, "client_id cannot be empty")
+			return
 		}
 
 		mu.Lock()
 
-		var realmKey *rsa.PrivateKey
-		if key, ok := realmKeys[realm]; ok {
-			realmKey = key
+		var realmData *realmData
+		if data, ok := realms[realm]; ok {
+			realmData = data
 		} else {
-			realmKey = newPrivateKey()
-			realmKeys[realm] = realmKey
+			data, err := newRealmData()
+			if err != nil {
+				err = fmt.Errorf("generate new realm data: %w", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+				return
+			}
+			realms[realm] = data
+			realmData = data
 		}
 
 		var userID string
@@ -94,23 +111,22 @@ func main() {
 
 		mu.Unlock()
 
+		issuer := fmt.Sprintf("%s/realms/%s", KeycloakPublicUrl, realm)
 		sessionID := uuid.NewString()
-
 		roles := []string{
 			"default-roles-" + realm,
 			"offline_access",
 			"uma_authorization",
 			"user",
 		}
-
 		now := time.Now().Unix()
 		lifetime := int64(60 * 60 * 24)
 
-		accessToken := getToken(claims{
+		accessToken, err := getAccessToken(accessClaims{
 			ExpiresAt:                  now + lifetime,
 			IssuedAt:                   now,
 			ID:                         uuid.NewString(),
-			Issuer:                     fmt.Sprintf("%s/realms/%s", KeycloakPublicUrl, realm),
+			Issuer:                     issuer,
 			Audience:                   "account",
 			Subject:                    userID,
 			Type:                       "Bearer",
@@ -137,11 +153,37 @@ func main() {
 			Groups:        []string{"default-group-" + realm},
 			UserName:      userName,
 			Email:         fmt.Sprintf("%s@%s", userName, EmailDomain),
-		}, realmKey)
+		}, realmData.accessPrivateKey, realmData.accessKeyID)
+		if err != nil {
+			err = fmt.Errorf("generate access token: %w", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+
+		refreshToken, err := getRefreshToken(refreshClaims{
+			ExpiresAt:       now + lifetime,
+			IssuedAt:        now,
+			ID:              uuid.NewString(),
+			Issuer:          issuer,
+			Audience:        issuer,
+			Subject:         userID,
+			Type:            "Refresh",
+			AuthorizedParty: clientId,
+			SessionState:    sessionID,
+			Scope:           "profile email",
+			SessionID:       sessionID,
+		}, realmData.refreshSecret, realmData.refreshKeyID)
+		if err != nil {
+			err = fmt.Errorf("generate refresh token: %w", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
 
 		res := token{
 			AccessToken:      accessToken,
-			RefreshToken:     "",
+			RefreshToken:     refreshToken,
 			TokenType:        "Bearer",
 			ExpiresIn:        lifetime,
 			RefreshExpiresIn: lifetime,
@@ -149,9 +191,9 @@ func main() {
 			SessionState:     sessionID,
 			Scope:            "profile email",
 		}
-
 		b, err := json.Marshal(res)
 		if err != nil {
+			err = fmt.Errorf("marshal response: %w", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
 			return
@@ -191,28 +233,59 @@ func main() {
 }
 
 const (
-	publicKeyID  = "OMTg5TWEm1TZeqeb2zuJJFX1ZxOwDs_IfPIgJ0uIFU0"
-	publicKeyALG = "RS256"
+	accessKeyALG  = "RS256"
+	refreshKeyALG = "HS256"
 )
 
-func newPrivateKey() *rsa.PrivateKey {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+func newRealmData() (*realmData, error) {
+	accessPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("access rsa rand gen: %w", err)
 	}
-	return privateKey
+
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return nil, fmt.Errorf("access rand read: %w", err)
+	}
+	accessKeyID := base64.RawURLEncoding.EncodeToString(b)
+
+	refreshSecret := make([]byte, 32)
+	if _, err := rand.Read(refreshSecret); err != nil {
+		return nil, fmt.Errorf("refresh rand read: %w", err)
+	}
+
+	refreshKeyID := uuid.NewString()
+
+	return &realmData{
+		accessPrivateKey: accessPrivateKey,
+		accessKeyID:      accessKeyID,
+		refreshSecret:    refreshSecret,
+		refreshKeyID:     refreshKeyID,
+	}, nil
 }
 
-func getToken(claims jwt.Claims, privateKey *rsa.PrivateKey) string {
-	token := jwt.NewWithClaims(jwt.GetSigningMethod(publicKeyALG), claims)
-	token.Header["kid"] = publicKeyID
+func getAccessToken(claims jwt.Claims, privateKey *rsa.PrivateKey, keyID string) (string, error) {
+	token := jwt.NewWithClaims(jwt.GetSigningMethod(accessKeyALG), claims)
+	token.Header["kid"] = keyID
 
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("access token sign: %w", err)
 	}
 
-	return tokenString
+	return tokenString, nil
+}
+
+func getRefreshToken(claims jwt.Claims, secret []byte, keyID string) (string, error) {
+	token := jwt.NewWithClaims(jwt.GetSigningMethod(refreshKeyALG), claims)
+	token.Header["kid"] = keyID
+
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", fmt.Errorf("refresh token sign: %w", err)
+	}
+
+	return tokenString, nil
 }
 
 func getBase64E(e int) string {
@@ -229,15 +302,6 @@ func getBase64N(n *big.Int) string {
 	return res
 }
 
-func getKeyID() (string, error) {
-	keyID := make([]byte, 32)
-	if _, err := rand.Read(keyID); err != nil {
-		return "", fmt.Errorf("random read: %w", err)
-	}
-
-	return base64.RawURLEncoding.EncodeToString(keyID), nil
-}
-
 func getCertResponse(publicKey rsa.PublicKey) *gocloak.CertResponse {
 	certResponse := &gocloak.CertResponse{
 		Keys: &[]gocloak.CertResponseKey{
@@ -252,7 +316,7 @@ func getCertResponse(publicKey rsa.PublicKey) *gocloak.CertResponse {
 	return certResponse
 }
 
-type claims struct {
+type accessClaims struct {
 	ExpiresAt                  int64          `json:"exp"`
 	IssuedAt                   int64          `json:"iat"`
 	ID                         string         `json:"jti"`
@@ -275,7 +339,7 @@ type claims struct {
 	Email                      string         `json:"email"`
 }
 
-func (claims) Valid() error { return nil }
+func (accessClaims) Valid() error { return nil }
 
 type rolesAccess struct {
 	Roles []string `json:"roles"`
@@ -283,6 +347,22 @@ type rolesAccess struct {
 type resourceAccess struct {
 	Account rolesAccess `json:"account"`
 }
+
+type refreshClaims struct {
+	ExpiresAt       int64  `json:"exp"`
+	IssuedAt        int64  `json:"iat"`
+	ID              string `json:"jti"`
+	Issuer          string `json:"iss"`
+	Audience        string `json:"aud"`
+	Subject         string `json:"sub"`
+	Type            string `json:"typ"`
+	AuthorizedParty string `json:"azp"`
+	SessionState    string `json:"session_state"`
+	Scope           string `json:"scope"`
+	SessionID       string `json:"sid"`
+}
+
+func (refreshClaims) Valid() error { return nil }
 
 type token struct {
 	AccessToken      string `json:"access_token"`

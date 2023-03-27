@@ -38,3 +38,15 @@ token-decode: REALM=opensight-asset
 token-decode: CLIENT_ID=local-web
 token-decode: tools ## Get decoded access token from mock keycloak
 	@$(MAKE) -s token USER=$(USER) REALM=$(REALM) CLIENT_ID=$(CLIENT_ID) | cut -d. -f2 | base64 -d | jq
+
+refresh: USER=initial
+refresh: REALM=opensight-asset
+refresh: CLIENT_ID=local-web
+refresh: tools ## Get and extract refresh token from mock keycloak
+	@$(MAKE) -s token-resp USER=$(USER) REALM=$(REALM) CLIENT_ID=$(CLIENT_ID) | jq -r .refresh_token
+
+refresh-decode: USER=initial
+refresh-decode: REALM=opensight-asset
+refresh-decode: CLIENT_ID=local-web
+refresh-decode: tools ## Get decoded refresh token from mock keycloak
+	@$(MAKE) -s refresh USER=$(USER) REALM=$(REALM) CLIENT_ID=$(CLIENT_ID) | cut -d. -f2 | base64 -d | jq
