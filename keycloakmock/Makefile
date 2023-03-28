@@ -16,6 +16,10 @@ endif
 run: ## Runs the keycloak mock server
 	@go run .
 
+cert: REALM=opensight-asset
+cert: ## Obtain keycloak certificates
+	@curl -s "http://localhost:8080/auth/realms/$(REALM)/protocol/openid-connect/certs"
+
 token-resp: USER=initial
 token-resp: REALM=opensight-asset
 token-resp: CLIENT_ID=local-web
@@ -24,7 +28,7 @@ token-resp: ## Obtain token from mock server
 		-d "client_id=$(CLIENT_ID)" \
 		-d "grant_type=password" \
 		-d "username=$(USER)" \
-		-d "password=password" \
+		-d "password=some_password" \
 		"http://localhost:8080/auth/realms/$(REALM)/protocol/openid-connect/token"
 
 token: USER=initial

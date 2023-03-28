@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 func handleToken(w http.ResponseWriter, r *http.Request) {
@@ -41,31 +42,13 @@ func handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.Lock()
-
-	var realmData *realmData
-	if data, ok := realms[realm]; ok {
-		realmData = data
-	} else {
-		data, err := newRealmData()
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, fmt.Errorf("generate new realm data: %w", err))
-			return
-		}
-		realms[realm] = data
-		realmData = data
+	realmData, err := getRealmData(realm)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("get realm data: %w", err))
+		return
 	}
 
-	var userID string
-	if id, ok := userIDs[userName]; ok {
-		userID = id
-	} else {
-		userID = uuid.NewString()
-		userIDs[userName] = userID
-	}
-
-	mu.Unlock()
-
+	userID := getUserID(userName)
 	issuer := fmt.Sprintf("%s/realms/%s", KeycloakPublicUrl, realm)
 	sessionID := uuid.NewString()
 	roles := []string{
@@ -88,7 +71,7 @@ func handleToken(w http.ResponseWriter, r *http.Request) {
 		AuthorizedParty:            clientId,
 		SessionState:               sessionID,
 		AuthenticationContextClass: "1",
-		AllowedOrigins:             []string{"http://localhost:3000", AllowedOrigin},
+		AllowedOrigins:             lo.Uniq([]string{"http://localhost:3000", AllowedOrigin}),
 		RealmAccess: rolesAccess{
 			Roles: roles,
 		},
@@ -132,7 +115,7 @@ func handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := tokenResponse{
+	response := tokenResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		TokenType:        "Bearer",
@@ -142,7 +125,7 @@ func handleToken(w http.ResponseWriter, r *http.Request) {
 		SessionState:     sessionID,
 		Scope:            "profile email",
 	}
-	b, err := json.Marshal(res)
+	b, err := json.Marshal(response)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("marshal response: %w", err))
 		return
@@ -222,7 +205,7 @@ type accessClaims struct {
 	EmailVerified              bool           `json:"email_verified"`
 	Roles                      []string       `json:"roles"`
 	Groups                     []string       `json:"groups"`
-	UserName                   string         `json:"preffered_username"`
+	UserName                   string         `json:"preferred_username"`
 	Email                      string         `json:"email"`
 }
 

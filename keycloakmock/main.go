@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 )
 
 const (
@@ -26,16 +27,9 @@ var (
 	mu      sync.Mutex
 )
 
-type realmData struct {
-	accessPrivateKey *rsa.PrivateKey
-	accessKeyID      string
-	refreshSecret    []byte
-	refreshKeyID     string
-}
-
 var (
 	ServerPort        = getEnvOrDefaultInt("PORT", 8080)
-	KeycloakPublicUrl = getEnvOrDefaultString("KEYCLOAK_PUBLIC_URL", "http://localhost:28080/auth")
+	KeycloakPublicUrl = getEnvOrDefaultString("KEYCLOAK_PUBLIC_URL", "http://localhost:8080/auth")
 	AllowedOrigin     = getEnvOrDefaultString("FRONTEND_URL", "http://localhost:3000")
 	EmailDomain       = getEnvOrDefaultString("USER_EMAIL_DOMAIN", "host.local")
 )
@@ -78,4 +72,42 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("HTTP server shutdown error: %v", err)
 	}
+}
+
+type realmData struct {
+	accessPrivateKey *rsa.PrivateKey
+	accessKeyID      string
+	refreshSecret    []byte
+	refreshKeyID     string
+}
+
+func getRealmData(realm string) (*realmData, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if data, ok := realms[realm]; ok {
+		return data, nil
+	}
+
+	data, err := newRealmData()
+	if err != nil {
+		return nil, fmt.Errorf("generate new realm data: %w", err)
+	}
+	realms[realm] = data
+
+	return data, nil
+}
+
+func getUserID(userName string) string {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if id, ok := userIDs[userName]; ok {
+		return id
+	}
+
+	userID := uuid.NewString()
+	userIDs[userName] = userID
+
+	return userID
 }
