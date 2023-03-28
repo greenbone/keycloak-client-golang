@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -53,34 +54,42 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(3 * time.Second))
 
+	errorString := func(err error) []byte {
+		return []byte(fmt.Sprintf(`{"error":"%s"}`, err.Error()))
+	}
+	writeError := func(w http.ResponseWriter, statusCode int, err error) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write(errorString(err))
+	}
+
 	r.Get("/auth/realms/{realm}/protocol/openid-connect/certs", func(w http.ResponseWriter, r *http.Request) {
 		realm := chi.URLParam(r, "realm")
-		w.Write([]byte(realm))
+		_, _ = w.Write([]byte(realm))
 	})
 
 	r.Post("/auth/realms/{realm}/protocol/openid-connect/token", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		r.ParseMultipartForm(0)
+		if err := r.ParseMultipartForm(0); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("read multipart form data: %w", err))
+			return
+		}
 
 		realm := chi.URLParam(r, "realm")
 		if realm == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"error":"%s"}`, "realm cannot be empty")
+			writeError(w, http.StatusBadRequest, errors.New("realm cannot be empty"))
 			return
 		}
 
 		userName := r.FormValue("username")
 		if userName == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"error":"%s"}`, "username cannot be empty")
+			writeError(w, http.StatusBadRequest, errors.New("username cannot be empty"))
 			return
 		}
 
 		clientId := r.FormValue("client_id")
 		if clientId == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"error":"%s"}`, "client_id cannot be empty")
+			writeError(w, http.StatusBadRequest, errors.New("client_id cannot be empty"))
 			return
 		}
 
@@ -92,9 +101,7 @@ func main() {
 		} else {
 			data, err := newRealmData()
 			if err != nil {
-				err = fmt.Errorf("generate new realm data: %w", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+				writeError(w, http.StatusInternalServerError, fmt.Errorf("generate new realm data: %w", err))
 				return
 			}
 			realms[realm] = data
@@ -155,9 +162,7 @@ func main() {
 			Email:         fmt.Sprintf("%s@%s", userName, EmailDomain),
 		}, realmData.accessPrivateKey, realmData.accessKeyID)
 		if err != nil {
-			err = fmt.Errorf("generate access token: %w", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			writeError(w, http.StatusInternalServerError, fmt.Errorf("generate access token: %w", err))
 			return
 		}
 
@@ -175,9 +180,7 @@ func main() {
 			SessionID:       sessionID,
 		}, realmData.refreshSecret, realmData.refreshKeyID)
 		if err != nil {
-			err = fmt.Errorf("generate refresh token: %w", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			writeError(w, http.StatusInternalServerError, fmt.Errorf("generate refresh token: %w", err))
 			return
 		}
 
@@ -193,14 +196,12 @@ func main() {
 		}
 		b, err := json.Marshal(res)
 		if err != nil {
-			err = fmt.Errorf("marshal response: %w", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			writeError(w, http.StatusInternalServerError, fmt.Errorf("marshal response: %w", err))
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write(b)
+		_, _ = w.Write(b)
 	})
 
 	srv := &http.Server{
@@ -306,10 +307,10 @@ func getCertResponse(publicKey rsa.PublicKey) *gocloak.CertResponse {
 	certResponse := &gocloak.CertResponse{
 		Keys: &[]gocloak.CertResponseKey{
 			{
-				Kid: lo.ToPtr(publicKeyID),
-				Alg: lo.ToPtr(publicKeyALG),
-				N:   lo.ToPtr(getBase64N(publicKey.N)),
-				E:   lo.ToPtr(getBase64E(publicKey.E)),
+				// Kid: lo.ToPtr(publicKeyID),
+				// Alg: lo.ToPtr(publicKeyALG),
+				N: lo.ToPtr(getBase64N(publicKey.N)),
+				E: lo.ToPtr(getBase64E(publicKey.E)),
 			},
 		},
 	}
