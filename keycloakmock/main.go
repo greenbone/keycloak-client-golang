@@ -70,8 +70,8 @@ func main() {
 	r.Post("/auth/realms/{realm}/protocol/openid-connect/token", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if err := r.ParseMultipartForm(0); err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("read multipart form data: %w", err))
+		if err := r.ParseForm(); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("read form data: %w", err))
 			return
 		}
 
