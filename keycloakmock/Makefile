@@ -25,7 +25,7 @@ token-resp: ## Obtain token from mock server
 		-d "grant_type=password" \
 		-d "username=$(USER)" \
 		-d "password=password" \
-		"http://localhost:3333/auth/realms/$(REALM)/protocol/openid-connect/token"
+		"http://localhost:8080/auth/realms/$(REALM)/protocol/openid-connect/token"
 
 token: USER=initial
 token: REALM=opensight-asset
