@@ -8,6 +8,12 @@ To run:
 make run
 ```
 
+To test (run an testable example with mock server started inproc):
+
+```sh
+make test
+```
+
 See `make help` for more scripts and details.
 
 ## Configuration
@@ -35,4 +41,4 @@ NOTE: whatever value you will put in `USER`, `REALM` and `CLIENT_ID` those will 
 
 ## Test
 
-See [example_test.go](example_test.go) for example usage with keycloak and our api auth module.
+See [example_test.go](example_test.go) for testable example usage with keycloak and our api auth module.

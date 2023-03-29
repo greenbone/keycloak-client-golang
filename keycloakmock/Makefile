@@ -5,8 +5,6 @@ help: ## Show this help
 .EXPORT_ALL_VARIABLES:
 CGO_ENABLED=0
 GOPRIVATE=github.com/greenbone
-GOOS=linux
-GOARCH=amd64
 
 tools: ## Install tools
 ifeq (, $(shell which jq))
@@ -15,6 +13,9 @@ endif
 
 run: ## Runs the keycloak mock server
 	@go run .
+
+test: ## Run example test (and start mock server inproc)
+	@go test .
 
 cert: REALM=opensight-asset
 cert: ## Obtain keycloak certificates

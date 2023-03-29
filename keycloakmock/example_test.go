@@ -4,12 +4,36 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
+	"os"
+	"testing"
+	"time"
 
 	"github.com/Nerzal/gocloak/v12"
 	"github.com/samber/lo"
 
 	"github.com/greenbone/user-management-api/auth"
 )
+
+func TestMain(m *testing.M) {
+	// run mock server in background
+	go func() {
+		main()
+	}()
+
+	// wait for server to be up
+	for {
+		conn, err := net.Dial("tcp", fmt.Sprintf(":%d", ServerPort))
+		if err == nil {
+			conn.Close()
+			log.Println("Mock server is up")
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	os.Exit(m.Run())
+}
 
 func Example() {
 	var (
