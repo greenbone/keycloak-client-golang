@@ -1,5 +1,5 @@
 # default reviewers
-*               @greenbone/dataminers @SteffenKraft @mkarpusiewicz-greenbone @HollererJ 
+*               @greenbone/asset @HollererJ 
 
 # .github
-.github/        @greenbone/dataminers @SteffenKraft @mkarpusiewicz-greenbone @HollererJ @greenbone/devops
+.github/        @greenbone/asset @greenbone/devops
