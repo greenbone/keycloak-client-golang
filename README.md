@@ -1,5 +1,7 @@
 ![Greenbone Logo](https://www.greenbone.net/wp-content/uploads/gb_new-logo_horizontal_rgb_small.png)
 
+[![GitHub releases](https://img.shields.io/github/release/greenbone/user-management-api.svg)](https://github.com/greenbone/user-management-api/releases)
+
 # User management modules
 
 This repository contains reusable user management modules.
@@ -73,9 +75,9 @@ This project is maintained by [Greenbone AG][Greenbone Networks]
 ## Contributing
 
 Your contributions are highly appreciated. Please
-[create a pull request](https://github.com/greenbone/pontos/pulls)
+[create a pull request](https://github.com/greenbone/user-management-api/pulls)
 on GitHub. Bigger changes need to be discussed with the development team via the
-[issues section at GitHub](https://github.com/greenbone/pontos/issues)
+[issues section at GitHub](https://github.com/greenbone/user-management-api/issues)
 first.
 
 ## License
