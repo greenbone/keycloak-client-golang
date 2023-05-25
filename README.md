@@ -1,3 +1,5 @@
+![Greenbone Logo](https://www.greenbone.net/wp-content/uploads/gb_new-logo_horizontal_rgb_small.png)
+
 # User management modules
 
 This repository contains reusable user management modules.
@@ -62,3 +64,24 @@ func main() {
 - create gin middleware via `auth.NewGinAuthMiddleware` with `ParseRequest` method of the authorizer. It will check `Authorization` header for the bearer token and `Origin` header for an allowed origin. It will put decoded claims into gin context
 - wire up auth middleware to routes you decide
 - inside routes use `auth.GetUserContext` to get decoded token claims as a user context object from gin context
+
+
+## Maintainer
+
+This project is maintained by [Greenbone AG][Greenbone Networks]
+
+## Contributing
+
+Your contributions are highly appreciated. Please
+[create a pull request](https://github.com/greenbone/pontos/pulls)
+on GitHub. Bigger changes need to be discussed with the development team via the
+[issues section at GitHub](https://github.com/greenbone/pontos/issues)
+first.
+
+## License
+
+Copyright (C) 2020-2023 [Greenbone AG][Greenbone Networks]
+
+Licensed under the [GNU General Public License v3.0 or later](LICENSE).
+
+[Greenbone Networks]: https://www.greenbone.net/
