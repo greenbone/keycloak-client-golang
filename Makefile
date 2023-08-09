@@ -6,10 +6,7 @@ help: ## Show this help
 	@grep -hE '^[A-Za-z0-9_ \-]*?:.*##.*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .EXPORT_ALL_VARIABLES:
-CGO_ENABLED=0
 GOPRIVATE=github.com/greenbone
-GOOS=linux
-GOARCH=amd64
 
 GOTESTSUM       = go run gotest.tools/gotestsum@latest
 GOFUMPT         = go run mvdan.cc/gofumpt@latest
