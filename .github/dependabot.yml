@@ -1,14 +1,18 @@
 version: 2
+enable-beta-ecosystems: true
 updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
       interval: weekly
       time: "04:00"
-    open-pull-requests-limit: 10
     allow:
       - dependency-type: direct
       - dependency-type: indirect
+    groups:
+      dev-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
