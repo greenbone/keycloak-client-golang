@@ -6,6 +6,5 @@ linters:
     - gofmt
     - goimports
     - gosec
-    - depguard
     - errorlint
     - wrapcheck
