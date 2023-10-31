@@ -23,7 +23,7 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/samber/lo"
 
-	"github.com/greenbone/user-management-api/auth"
+	"github.com/greenbone/keycloak-client-golang/auth"
 )
 
 func setupToken() (token string, clean func()) {

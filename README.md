@@ -1,6 +1,6 @@
 ![Greenbone Logo](https://www.greenbone.net/wp-content/uploads/gb_new-logo_horizontal_rgb_small.png)
 
-[![GitHub releases](https://img.shields.io/github/release/greenbone/user-management-api.svg)](https://github.com/greenbone/user-management-api/releases)
+[![GitHub releases](https://img.shields.io/github/release/greenbone/keycloak-client-golang.svg)](https://github.com/greenbone/keycloak-client-golang/releases)
 
 # User management modules
 
@@ -11,7 +11,7 @@ This repository contains reusable user management modules.
 See [auth/example_test.go](auth/example_test.go) for example usage or snippet below:
 
 ```go
-import "github.com/greenbone/user-management-api/auth"
+import "github.com/greenbone/keycloak-client-golang/auth"
 
 func main() {
     realmInfo := auth.KeycloakRealmInfo{
@@ -75,9 +75,9 @@ This project is maintained by [Greenbone AG][Greenbone Networks]
 ## Contributing
 
 Your contributions are highly appreciated. Please
-[create a pull request](https://github.com/greenbone/user-management-api/pulls)
+[create a pull request](https://github.com/greenbone/keycloak-client-golang/pulls)
 on GitHub. Bigger changes need to be discussed with the development team via the
-[issues section at GitHub](https://github.com/greenbone/user-management-api/issues)
+[issues section at GitHub](https://github.com/greenbone/keycloak-client-golang/issues)
 first.
 
 ## License
