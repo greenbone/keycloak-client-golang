@@ -1,4 +1,4 @@
-module github.com/greenbone/user-management-api
+module github.com/greenbone/keycloak-client-golang
 
 go 1.21
 

@@ -1,4 +1,4 @@
-PROJECT := user-management-api
+PROJECT := keycloak-client-golang
 GIT_COMMIT := $(shell git rev-list -1 HEAD)
 
 .PHONY: help
