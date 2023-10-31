@@ -21,7 +21,7 @@ on:
 
 jobs:
   release:
-    name: User Management Api
+    name: Keycloak Client Golang
     uses: greenbone/workflows/.github/workflows/release-3rd-gen.yml@main
     with:
       release-type: ${{ inputs.release-type }}
