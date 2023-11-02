@@ -1,5 +1,5 @@
 # default reviewers
-*               @greenbone/asset @HollererJ 
+*               @greenbone/asset 
 
 # .github
 .github/        @greenbone/asset @greenbone/devops
