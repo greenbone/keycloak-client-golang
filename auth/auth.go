@@ -26,7 +26,6 @@ type KeycloakRealmInfo struct {
 	RealmId               string // RealmId is the realm name that is passed to services via env vars
 	AuthServerInternalUrl string // AuthServerInternalUrl should point to keycloak auth server on internal (not public) network, e.g. http://keycloak:8080/auth; used for contacting keycloak for realm certificate for JWT
 	AuthServerPublicUrl   string // AuthServerPublicUrl should point to keycloak auth server on public (not internal) network, e.g. http://localhost:28080/auth; used to validate issuer field in JWT
-	tokenIssuer           string
 }
 
 func (i *KeycloakRealmInfo) validate() error {
@@ -41,7 +40,7 @@ func (i *KeycloakRealmInfo) validate() error {
 		errs = append(errs, fmt.Errorf("couldn't parse auth server internal url: %w", err))
 	}
 
-	authUrl, err := url.ParseRequestURI(i.AuthServerPublicUrl)
+	_, err = url.ParseRequestURI(i.AuthServerPublicUrl)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("couldn't parse auth server public url: %w", err))
 	}
@@ -49,8 +48,6 @@ func (i *KeycloakRealmInfo) validate() error {
 	if len(errs) > 0 {
 		return fmt.Errorf("\n%w", errors.Join(errs...))
 	}
-
-	i.tokenIssuer = authUrl.JoinPath("/realms/" + i.RealmId).String()
 
 	return nil
 }
@@ -153,10 +150,6 @@ func (a *KeycloakAuthorizer) ParseJWT(ctx context.Context, token string) (UserCo
 		return UserContext{}, fmt.Errorf("parsing of token failed: %w", err)
 	}
 	claims := jwtToken.Claims.(*customClaims)
-
-	if claims.RegisteredClaims.Issuer != a.realmInfo.tokenIssuer {
-		return UserContext{}, fmt.Errorf("invalid domain of issuer of token %q", claims.RegisteredClaims.Issuer)
-	}
 
 	if _, _, err := a.client.DecodeAccessToken(ctx, token, a.realmInfo.RealmId); err != nil {
 		return UserContext{}, fmt.Errorf("validation of token failed: %w", err)

@@ -86,13 +86,6 @@ func TestParseJWT(t *testing.T) {
 
 	FakeCertResponse(t, authorizer)
 
-	t.Run("No realm info", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), noRealmToken)
-
-		assert.ErrorContains(t, err, "invalid domain of issuer")
-		assert.Zero(t, userContext)
-	})
-
 	t.Run("Wrong algorithm", func(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), invalidAlgorithmToken)
 
@@ -122,20 +115,6 @@ func TestParseJWT(t *testing.T) {
 
 		assert.ErrorContains(t, err, "parsing of token failed")
 		assert.ErrorContains(t, err, "cannot unmarshal number")
-		assert.Zero(t, userContext)
-	})
-
-	t.Run("Invalid issuer", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), invalidIssuerToken)
-
-		assert.ErrorContains(t, err, "invalid domain of issuer")
-		assert.Zero(t, userContext)
-	})
-
-	t.Run("Invalid realm", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), invalidRealmToken)
-
-		assert.ErrorContains(t, err, "invalid domain of issuer")
 		assert.Zero(t, userContext)
 	})
 
