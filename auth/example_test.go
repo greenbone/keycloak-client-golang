@@ -49,16 +49,14 @@ func ExampleNewKeycloakAuthorizer() {
 	defer clean()
 
 	var (
-		realmId   = "user-management"             // keycloak realm name
-		authUrl   = "http://keycloak:8080/auth"   // keycloak server internal url
-		publicUrl = "http://localhost:28080/auth" // keycloak server public url (jwt issuer)
-		origin    = "http://localhost:3000"       // request origin, note: it is optional, if request doesn't have Origin header it is not validated
+		realmId = "user-management"           // keycloak realm name
+		authUrl = "http://keycloak:8080/auth" // keycloak server internal url
+		origin  = "http://localhost:3000"     // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{
 		RealmId:               realmId,
 		AuthServerInternalUrl: authUrl,
-		AuthServerPublicUrl:   publicUrl,
 	}
 
 	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo, authorizerKeycloakMock) // NOTE: authorizerKeycloakMock only used for mocking keycloak cert response in this example, do not use outside tests!
@@ -101,16 +99,14 @@ func ExampleNewGinAuthMiddleware() {
 	defer clean()
 
 	var (
-		realmId   = "user-management"             // keycloak realm name
-		authUrl   = "http://keycloak:8080/auth"   // keycloak server internal url
-		publicUrl = "http://localhost:28080/auth" // keycloak server public url (jwt issuer)
-		origin    = "http://localhost:3000"       // request origin, note: it is optional, if request doesn't have Origin header it is not validated
+		realmId = "user-management"           // keycloak realm name
+		authUrl = "http://keycloak:8080/auth" // keycloak server internal url
+		origin  = "http://localhost:3000"     // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{
 		RealmId:               realmId,
 		AuthServerInternalUrl: authUrl,
-		AuthServerPublicUrl:   publicUrl,
 	}
 
 	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo, authorizerKeycloakMock) // NOTE: authorizerKeycloakMock only used for mocking keycloak cert response in this example, do not use outside tests!

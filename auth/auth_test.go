@@ -20,7 +20,6 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 		assert.ErrorContains(t, err, "invalid realm info")
 		assert.ErrorContains(t, err, "realm id cannot be empty")
 		assert.ErrorContains(t, err, "couldn't parse auth server internal url")
-		assert.ErrorContains(t, err, "couldn't parse auth server public url")
 		assert.Nil(t, authorizer)
 	})
 
@@ -36,27 +35,11 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 				t.Run(test, func(t *testing.T) {
 					authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 						AuthServerInternalUrl: test,
-						AuthServerPublicUrl:   validPublicUrl,
 						RealmId:               validRealm,
 					})
 
 					assert.ErrorContains(t, err, "invalid realm info")
 					assert.ErrorContains(t, err, "couldn't parse auth server internal url")
-					assert.Nil(t, authorizer)
-				})
-			}
-		})
-		t.Run("public", func(t *testing.T) {
-			for _, test := range tests {
-				t.Run(test, func(t *testing.T) {
-					authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
-						AuthServerInternalUrl: validInternalUrl,
-						AuthServerPublicUrl:   test,
-						RealmId:               validRealm,
-					})
-
-					assert.ErrorContains(t, err, "invalid realm info")
-					assert.ErrorContains(t, err, "couldn't parse auth server public url")
 					assert.Nil(t, authorizer)
 				})
 			}
@@ -67,7 +50,6 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 		authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 			RealmId:               validRealm,
 			AuthServerInternalUrl: validInternalUrl,
-			AuthServerPublicUrl:   validPublicUrl,
 		})
 
 		assert.NoError(t, err)
@@ -79,7 +61,6 @@ func TestParseJWT(t *testing.T) {
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
 		AuthServerInternalUrl: validInternalUrl,
-		AuthServerPublicUrl:   validPublicUrl,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
@@ -137,7 +118,6 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
 		AuthServerInternalUrl: validInternalUrl,
-		AuthServerPublicUrl:   validPublicUrl,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
@@ -192,7 +172,6 @@ func TestParseRequest(t *testing.T) {
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
 		AuthServerInternalUrl: validInternalUrl,
-		AuthServerPublicUrl:   validPublicUrl,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
