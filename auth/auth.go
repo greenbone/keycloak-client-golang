@@ -25,7 +25,6 @@ type KeycloakAuthorizer struct {
 type KeycloakRealmInfo struct {
 	RealmId               string // RealmId is the realm name that is passed to services via env vars
 	AuthServerInternalUrl string // AuthServerInternalUrl should point to keycloak auth server on internal (not public) network, e.g. http://keycloak:8080/auth; used for contacting keycloak for realm certificate for JWT
-	AuthServerPublicUrl   string // AuthServerPublicUrl should point to keycloak auth server on public (not internal) network, e.g. http://localhost:28080/auth; used to validate issuer field in JWT
 }
 
 func (i *KeycloakRealmInfo) validate() error {
@@ -38,11 +37,6 @@ func (i *KeycloakRealmInfo) validate() error {
 	_, err := url.ParseRequestURI(i.AuthServerInternalUrl)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("couldn't parse auth server internal url: %w", err))
-	}
-
-	_, err = url.ParseRequestURI(i.AuthServerPublicUrl)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("couldn't parse auth server public url: %w", err))
 	}
 
 	if len(errs) > 0 {
