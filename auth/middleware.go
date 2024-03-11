@@ -8,8 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,13 +26,13 @@ func NewGinAuthMiddleware(parseRequestFunc func(ctx context.Context, authorizati
 		}
 
 		if err := ctx.ShouldBindHeader(&header); err != nil {
-			_ = ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("could not bind header: %w", err))
+			AbortWithError(ctx, fmt.Errorf("could not bind header: %w", err))
 			return
 		}
 
 		userContext, err := parseRequestFunc(ctx, header.Authorization, header.Origin)
 		if err != nil {
-			_ = ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("authorization failed: %w", err))
+			AbortWithError(ctx, fmt.Errorf("authorization failed: %w", err))
 			return
 		}
 
@@ -42,4 +40,9 @@ func NewGinAuthMiddleware(parseRequestFunc func(ctx context.Context, authorizati
 
 		ctx.Next()
 	}, nil
+}
+
+func AbortWithError(ctx *gin.Context, err error) {
+	ctx.Error(err)
+	ctx.Abort()
 }
