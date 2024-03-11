@@ -4,7 +4,7 @@
 
 # Golang Keycloak Client
 
-This repository contains a reusable connector for the  user management backend and therefore Keycloak.
+This repository contains a reusable connector for Keycloak.
 
 ## Authorization
 
