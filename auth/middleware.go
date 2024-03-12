@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,6 +44,6 @@ func NewGinAuthMiddleware(parseRequestFunc func(ctx context.Context, authorizati
 }
 
 func AbortWithError(ctx *gin.Context, err error) {
-	ctx.Error(err)
+	_ = ctx.Error(err)
 	ctx.Abort()
 }
