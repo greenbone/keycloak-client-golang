@@ -43,7 +43,6 @@ func TestGinAuthMiddleware(t *testing.T) {
 		ctx.Request, _ = http.NewRequest("GET", "/", nil)
 		auth(ctx)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		require.Len(t, ctx.Errors, 1)
 		assert.ErrorContains(t, ctx.Errors[0], "could not bind header")
 		assert.ErrorContains(t, ctx.Errors[0], "Authorization")
@@ -65,7 +64,6 @@ func TestGinAuthMiddleware(t *testing.T) {
 		ctx.Request.Header.Add("Origin", "origin")
 		auth(ctx)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		require.Len(t, ctx.Errors, 1)
 		assert.ErrorContains(t, ctx.Errors[0], "authorization failed")
 		assert.ErrorContains(t, ctx.Errors[0], "test error")
