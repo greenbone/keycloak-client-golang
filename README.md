@@ -2,9 +2,9 @@
 
 [![GitHub releases](https://img.shields.io/github/release/greenbone/keycloak-client-golang.svg)](https://github.com/greenbone/keycloak-client-golang/releases)
 
-# OpenSight Keycloak Client
+# Golang Keycloak Client
 
-This repository contains a reusable connector for the  user management backend and therefore Keycloak.
+This repository contains a reusable connector for Keycloak.
 
 ## Authorization
 
