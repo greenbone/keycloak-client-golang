@@ -2,10 +2,10 @@ package auth
 
 import (
 	"context"
+
 	"github.com/Nerzal/gocloak/v12"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type ITokenReceiver interface {
@@ -26,41 +26,41 @@ func NewKeycloakJWTCacheInMemory(keycloakJWTClient ITokenReceiver) *KeycloakJWTC
 	}
 }
 
-func (k *KeycloakJWTCacheInMemory) isTokenValid() (bool, error) {
-	return true, nil
-	parser := jwt.NewParser()
-
-	claims := &jwt.MapClaims{}
-	_, _, err := parser.ParseUnverified(k.cachedToken.AccessToken, claims)
-	if err != nil {
-		return false, err
+func (k *KeycloakJWTCacheInMemory) isTokenValid() bool {
+	if k.cachedToken == nil {
+		return false
 	}
 
-	return claims.VerifyExpiresAt(time.Now().Unix(), true), nil
+	parser := jwt.NewParser()
+	claims := &jwt.MapClaims{}
+
+	_, _, err := parser.ParseUnverified(k.cachedToken.AccessToken, claims)
+	if err != nil {
+		return false
+	}
+
+	err = claims.Valid()
+	if err != nil {
+		log.Debug().Msgf("Token is invalid: %v", err)
+		return false
+	}
+
+	return true
 }
 
 func (k *KeycloakJWTCacheInMemory) getToken() (*gocloak.JWT, error) {
-	var token *gocloak.JWT = k.cachedToken
-	tokenIsValid, err := k.isTokenValid()
-	if err != nil {
-		return nil, err
-	}
-
-	log.Info().Msgf("tokenIsValid: %v", tokenIsValid)
-
-	if k.cachedToken == nil || !tokenIsValid {
-		var err error
-		token, err = k.keycloakJWTClient.getToken()
-		k.cachedToken = token
-		log.Debug().Msgf("updated token: %s", token.AccessToken)
+	if k.cachedToken == nil || !k.isTokenValid() {
+		token, err := k.keycloakJWTClient.getToken()
 		if err != nil {
 			return nil, err
 		}
+		k.cachedToken = token
+		log.Debug().Msgf("updated token: %s", token.AccessToken)
 	} else {
-		log.Debug().Msgf("Using cached token: %s", token.AccessToken)
+		log.Debug().Msgf("Using cached token: %s", k.cachedToken.AccessToken)
 	}
 
-	return token, nil
+	return k.cachedToken, nil
 }
 
 func (k *KeycloakJWTCacheInMemory) GetAccessToken() (string, error) {
