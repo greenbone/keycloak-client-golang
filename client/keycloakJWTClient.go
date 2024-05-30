@@ -1,4 +1,4 @@
-package auth
+package client
 
 import (
 	"context"
@@ -26,16 +26,17 @@ func NewKeycloakJWTCacheInMemory(keycloakJWTClient ITokenReceiver) *KeycloakJWTC
 	}
 }
 
-func (k *KeycloakJWTCacheInMemory) isTokenValid() bool {
-	if k.cachedToken == nil {
+func isTokenValid(token *gocloak.JWT) bool {
+	if token == nil {
 		return false
 	}
 
 	parser := jwt.NewParser()
 	claims := &jwt.MapClaims{}
 
-	_, _, err := parser.ParseUnverified(k.cachedToken.AccessToken, claims)
+	_, _, err := parser.ParseUnverified(token.AccessToken, claims)
 	if err != nil {
+		log.Error().Msgf("couldn't parse JWT access token: %v", err)
 		return false
 	}
 
@@ -49,7 +50,7 @@ func (k *KeycloakJWTCacheInMemory) isTokenValid() bool {
 }
 
 func (k *KeycloakJWTCacheInMemory) getToken() (*gocloak.JWT, error) {
-	if k.cachedToken == nil || !k.isTokenValid() {
+	if k.cachedToken == nil || !isTokenValid(k.cachedToken) {
 		token, err := k.keycloakJWTClient.getToken()
 		if err != nil {
 			return nil, err
@@ -74,7 +75,6 @@ func (k *KeycloakJWTCacheInMemory) GetAccessToken() (string, error) {
 
 type KeycloakJWTClient struct {
 	client       *gocloak.GoCloak
-	basePath     string
 	clientName   string
 	clientSecret string
 	realm        string
@@ -85,7 +85,6 @@ var _ ITokenReceiver = &KeycloakJWTClient{}
 func NewKeycloakJWTClient(basePath, clientName, clientSecret, realm string) *KeycloakJWTClient {
 	return &KeycloakJWTClient{
 		client:       gocloak.NewClient(basePath),
-		basePath:     basePath,
 		clientName:   clientName,
 		clientSecret: clientSecret,
 		realm:        realm,
