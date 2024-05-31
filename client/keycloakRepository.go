@@ -6,21 +6,24 @@ import (
 )
 
 type IKeycloakRepository interface {
-	GetClientAccessToken(clientName, clientSecret, realm string) (*gocloak.JWT, error)
+	getClientToken(clientName, clientSecret string) (*gocloak.JWT, error)
+	// Append keycloak functions here
 }
 
 type KeycloakRepository struct {
 	client *gocloak.GoCloak
+	realm  string
 }
 
 var _ IKeycloakRepository = &KeycloakRepository{}
 
-func NewKeycloakRepository(basePath string) *KeycloakRepository {
+func NewKeycloakRepository(basePath, realm string) *KeycloakRepository {
 	return &KeycloakRepository{
 		client: gocloak.NewClient(basePath),
+		realm:  realm,
 	}
 }
 
-func (r *KeycloakRepository) GetClientAccessToken(clientName, clientSecret, realm string) (*gocloak.JWT, error) {
-	return r.client.LoginClient(context.Background(), clientName, clientSecret, realm)
+func (r *KeycloakRepository) getClientToken(clientName, clientSecret string) (*gocloak.JWT, error) {
+	return r.client.LoginClient(context.Background(), clientName, clientSecret, r.realm)
 }

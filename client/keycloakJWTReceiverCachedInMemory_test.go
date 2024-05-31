@@ -8,21 +8,16 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockTokenReceiver struct {
+type MockKeycloakRepository struct {
 	mock.Mock
 }
 
-func (m *MockTokenReceiver) GetAccessToken() (string, error) {
-	args := m.Called()
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockTokenReceiver) getToken() (*gocloak.JWT, error) {
+func (m *MockKeycloakRepository) getClientToken(clientName, clientSecret string) (*gocloak.JWT, error) {
 	args := m.Called()
 	return args.Get(0).(*gocloak.JWT), args.Error(1)
 }
 
-func TestKeycloakJWTCacheInMemory_GetToken(t *testing.T) {
+func TestKeycloakJWTCacheInMemory_GetClientToken(t *testing.T) {
 
 	tests := []struct {
 		name             string
@@ -78,14 +73,14 @@ func TestKeycloakJWTCacheInMemory_GetToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			mockTokenReceiver := new(MockTokenReceiver)
-			cache := NewKeycloakJWTCacheInMemory(mockTokenReceiver)
+			mockTokenReceiver := new(MockKeycloakRepository)
+			cache := NewKeycloakJWTReceiverCachedInMemory(mockTokenReceiver)
 
 			cache.cachedToken = tt.cachedToken
 
-			mockTokenReceiver.On("getToken").Return(tt.mockToken, tt.mockError)
+			mockTokenReceiver.On("getClientToken").Return(tt.mockToken, tt.mockError)
 
-			token, err := cache.getToken()
+			token, err := cache.getClientToken("testClient", "testSecret")
 
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
@@ -95,26 +90,26 @@ func TestKeycloakJWTCacheInMemory_GetToken(t *testing.T) {
 
 			assert.Equal(t, tt.expectedToken, token)
 			if tt.shouldFetchToken {
-				mockTokenReceiver.AssertCalled(t, "getToken")
+				mockTokenReceiver.AssertCalled(t, "getClientToken")
 			}
 		})
 	}
 }
 
-func TestKeycloakJWTCacheInMemory_GetAccessToken(t *testing.T) {
-	mockTokenReceiver := new(MockTokenReceiver)
+func TestKeycloakJWTCacheInMemory_GetClientAccessToken(t *testing.T) {
+	mockKeycloakRepository := new(MockKeycloakRepository)
 	mockToken := &gocloak.JWT{
 		AccessToken: "test_token",
 		ExpiresIn:   3600,
 	}
 
-	mockTokenReceiver.On("getToken").Return(mockToken, nil)
+	mockKeycloakRepository.On("getClientToken").Return(mockToken, nil)
 
-	cache := NewKeycloakJWTCacheInMemory(mockTokenReceiver)
+	cache := NewKeycloakJWTReceiverCachedInMemory(mockKeycloakRepository)
 
-	accessToken, err := cache.GetAccessToken()
+	accessToken, err := cache.GetClientAccessToken("testClient", "testSecret")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "test_token", accessToken)
-	mockTokenReceiver.AssertCalled(t, "getToken")
+	mockKeycloakRepository.AssertCalled(t, "getClientToken")
 }
