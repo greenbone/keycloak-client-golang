@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+
 	"github.com/Nerzal/gocloak/v12"
 )
 

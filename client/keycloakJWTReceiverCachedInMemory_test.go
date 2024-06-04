@@ -17,9 +17,9 @@ func (m *MockKeycloakRepository) getClientToken(clientName, clientSecret string)
 	return args.Get(0).(*gocloak.JWT), args.Error(1)
 }
 
-func TestKeycloakJWTCacheInMemory_GetClientToken(t *testing.T) {
+func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 
-	tests := []struct {
+	testCases := []struct {
 		name             string
 		cachedToken      *gocloak.JWT
 		mockToken        *gocloak.JWT
@@ -70,33 +70,29 @@ func TestKeycloakJWTCacheInMemory_GetClientToken(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
 
 			mockTokenReceiver := new(MockKeycloakRepository)
 			cache := NewKeycloakJWTReceiverCachedInMemory(mockTokenReceiver)
 
-			cache.cachedToken = tt.cachedToken
+			cache.cachedToken = tc.cachedToken
 
-			mockTokenReceiver.On("getClientToken").Return(tt.mockToken, tt.mockError)
+			mockTokenReceiver.On("getClientToken").Return(tc.mockToken, tc.mockError)
 
 			token, err := cache.getClientToken("testClient", "testSecret")
 
-			if tt.expectedError != nil {
-				assert.ErrorIs(t, err, tt.expectedError)
-			} else {
-				assert.NoError(t, err)
-			}
+			assert.ErrorIs(t, err, tc.expectedError)
 
-			assert.Equal(t, tt.expectedToken, token)
-			if tt.shouldFetchToken {
+			assert.Equal(t, tc.expectedToken, token)
+			if tc.shouldFetchToken {
 				mockTokenReceiver.AssertCalled(t, "getClientToken")
 			}
 		})
 	}
 }
 
-func TestKeycloakJWTCacheInMemory_GetClientAccessToken(t *testing.T) {
+func TestKeycloakJWTReceiverCachedInMemory_GetClientAccessToken(t *testing.T) {
 	mockKeycloakRepository := new(MockKeycloakRepository)
 	mockToken := &gocloak.JWT{
 		AccessToken: "test_token",
