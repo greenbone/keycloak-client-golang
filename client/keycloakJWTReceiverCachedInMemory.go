@@ -33,13 +33,13 @@ func isTokenValid(token *gocloak.JWT) bool {
 
 	_, _, err := parser.ParseUnverified(token.AccessToken, claims)
 	if err != nil {
-		log.Error().Msgf("couldn't parse ID token: %v", err)
+		log.Error().Msgf("couldn't parse JWT access token: %v", err)
 		return false
 	}
 
 	err = claims.Valid()
 	if err != nil {
-		log.Debug().Msgf("ID token is invalid: %v", err)
+		log.Debug().Msgf("JWT access token is invalid: %v", err)
 		return false
 	}
 
@@ -50,7 +50,7 @@ func (k *KeycloakJWTReceiverCachedInMemory) getClientToken(clientName, clientSec
 	if k.cachedToken == nil || !isTokenValid(k.cachedToken) {
 		token, err := k.keycloakRepository.getClientToken(clientName, clientSecret)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't fetch ID token: %w", err)
+			return nil, fmt.Errorf("couldn't fetch JWT access token: %w", err)
 		}
 		k.cachedToken = token
 	}
