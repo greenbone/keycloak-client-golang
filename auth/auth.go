@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/Nerzal/gocloak/v12"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // KeycloakAuthorizer is used to validate if JWT has a correct signature and is valid and returns keycloak claims

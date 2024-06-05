@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/Nerzal/gocloak/v12"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,7 +37,10 @@ func isTokenValid(token *gocloak.JWT) bool {
 		return false
 	}
 
-	err = claims.Valid()
+	err = jwt.NewValidator(
+		jwt.WithIssuedAt(),
+		jwt.WithExpirationRequired(),
+	).Validate(claims)
 	if err != nil {
 		log.Debug().Msgf("JWT access token is invalid: %v", err)
 		return false
