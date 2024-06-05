@@ -45,6 +45,20 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 			shouldFetchToken: true,
 		},
 		{
+			name: "invalid cached token",
+			cachedToken: &gocloak.JWT{
+				AccessToken: "not a valid token",
+			},
+			mockToken: &gocloak.JWT{
+				AccessToken: "test_token",
+			},
+			expectedToken: &gocloak.JWT{
+				AccessToken: "test_token",
+			},
+			expectedError:    nil,
+			shouldFetchToken: true,
+		},
+		{
 			name: "Expired cached token",
 			cachedToken: &gocloak.JWT{
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzEwMjJ9.hsfQPY3ZVrVIV-bzI54NRoTDG6wWzORVp68lxGa3D08",
