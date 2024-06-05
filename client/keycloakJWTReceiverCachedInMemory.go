@@ -6,6 +6,7 @@ package client
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/Nerzal/gocloak/v12"
 	"github.com/golang-jwt/jwt/v5"
@@ -14,6 +15,7 @@ import (
 
 type KeycloakJWTReceiverCachedInMemory struct {
 	keycloakRepository IKeycloakRepository
+	mutex              sync.Mutex
 	cachedToken        *gocloak.JWT
 }
 
@@ -50,6 +52,9 @@ func isTokenValid(token *gocloak.JWT) bool {
 }
 
 func (k *KeycloakJWTReceiverCachedInMemory) getClientToken(clientName, clientSecret string) (*gocloak.JWT, error) {
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
+
 	if k.cachedToken == nil || !isTokenValid(k.cachedToken) {
 		token, err := k.keycloakRepository.getClientToken(clientName, clientSecret)
 		if err != nil {
