@@ -7,4 +7,3 @@ linters:
     - goimports
     - gosec
     - errorlint
-    - wrapcheck

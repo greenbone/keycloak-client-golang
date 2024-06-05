@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/Nerzal/gocloak/v12"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jarcoal/httpmock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
