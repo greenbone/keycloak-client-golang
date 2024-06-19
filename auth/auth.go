@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Nerzal/gocloak/v12"
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/golang-jwt/jwt/v5"
 )
 

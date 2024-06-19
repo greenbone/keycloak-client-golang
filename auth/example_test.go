@@ -17,7 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/Nerzal/gocloak/v12"
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jarcoal/httpmock"
