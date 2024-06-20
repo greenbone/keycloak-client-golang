@@ -87,7 +87,7 @@ func TestParseJWT(t *testing.T) {
 		userContext, err := authorizer.ParseJWT(context.Background(), expiredToken)
 
 		assert.ErrorContains(t, err, "validation of token failed")
-		assert.ErrorContains(t, err, "Token is expired")
+		assert.ErrorContains(t, err, "token is expired")
 		assert.Zero(t, userContext)
 	})
 
