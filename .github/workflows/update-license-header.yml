@@ -1,7 +1,6 @@
 name: Update License Headers
 
 on:
-  pull_request:
   workflow_dispatch:
   schedule:
     - cron: "0 1 * * 1" # At 01:00 on Mondays
