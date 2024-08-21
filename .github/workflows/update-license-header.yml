@@ -1,0 +1,24 @@
+name: Update License Headers
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * 1" # At 01:00 on Mondays
+
+jobs:
+  update-header:
+    name: Update headers
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run update header
+        uses: greenbone/actions/update-header@v3
+        with:
+          github-user: ${{ secrets.GREENBONE_BOT }}
+          github-user-mail: ${{ secrets.GREENBONE_BOT_MAIL }}
+          github-user-token: ${{ secrets.GREENBONE_BOT_TOKEN }}
+          directories: auth client
+          license-type: "AGPL-3.0-or-later"
+          target: main
