@@ -131,7 +131,7 @@ func init() {
 
 func getBase64E(e int) string {
 	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.BigEndian, int32(e))
+	_ = binary.Write(buf, binary.BigEndian, int32(e)) //nolint:gosec
 	res := base64.RawURLEncoding.EncodeToString(buf.Bytes())
 
 	return res
