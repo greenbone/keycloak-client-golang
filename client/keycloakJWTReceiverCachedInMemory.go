@@ -25,15 +25,15 @@ func NewKeycloakJWTReceiverCachedInMemory(keycloakRepository IKeycloakRepository
 	}
 }
 
-func isTokenValid(token *gocloak.JWT) bool {
-	if token == nil {
+func (k *KeycloakJWTReceiverCachedInMemory) isTokenValid() bool {
+	if k.cachedToken == nil {
 		return false
 	}
 
 	parser := jwt.NewParser()
 	claims := &jwt.MapClaims{}
 
-	_, _, err := parser.ParseUnverified(token.AccessToken, claims)
+	_, _, err := parser.ParseUnverified(k.cachedToken.AccessToken, claims)
 	if err != nil {
 		log.Error().Msgf("couldn't parse JWT access token: %v", err)
 		return false
@@ -55,7 +55,7 @@ func (k *KeycloakJWTReceiverCachedInMemory) getClientToken(clientName, clientSec
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
 
-	if k.cachedToken == nil || !isTokenValid(k.cachedToken) {
+	if !k.isTokenValid() {
 		token, err := k.keycloakRepository.getClientToken(clientName, clientSecret)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't fetch JWT access token: %w", err)
@@ -73,4 +73,11 @@ func (k *KeycloakJWTReceiverCachedInMemory) GetClientAccessToken(clientName, cli
 	}
 
 	return token.AccessToken, nil
+}
+
+func (k *KeycloakJWTReceiverCachedInMemory) ClearClientAccessToken() {
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
+
+	k.cachedToken = nil
 }
