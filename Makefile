@@ -11,7 +11,7 @@ GOPRIVATE=github.com/greenbone
 GOTESTSUM       = go run gotest.tools/gotestsum@latest
 GOFUMPT         = go run mvdan.cc/gofumpt@latest
 GOIMPORTS       = go run golang.org/x/tools/cmd/goimports@latest
-GOLANGCI-LINT   = go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+GOLANGCI-LINT   = go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 GO-MOD-OUTDATED = go run github.com/psampaz/go-mod-outdated@latest
 GO-MOD-UPGRADE  = go run github.com/oligot/go-mod-upgrade@latest
 
