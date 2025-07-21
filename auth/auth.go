@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/golang-jwt/jwt/v5"
@@ -65,6 +66,13 @@ func NewKeycloakAuthorizer(realmInfo KeycloakRealmInfo, options ...func(*Keycloa
 	}
 
 	return authorizer, nil
+}
+
+func WithCertCacheInvalidationTime(invalidationTime time.Duration) func(a *KeycloakAuthorizer) {
+	return func(a *KeycloakAuthorizer) {
+		a.client = gocloak.NewClient(a.realmInfo.AuthServerInternalUrl, gocloak.SetCertCacheInvalidationTime(invalidationTime))
+		fmt.Println("Set cert cache invalidation time to", invalidationTime)
+	}
 }
 
 func ConfigureGoCloak(f func(c *gocloak.GoCloak)) func(a *KeycloakAuthorizer) {
