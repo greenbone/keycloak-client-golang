@@ -1,0 +1,24 @@
+name: Codecov
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/go-setup
+
+      - name: Run tests with coverage
+        run: go test -cover -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
