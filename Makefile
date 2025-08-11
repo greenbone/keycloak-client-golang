@@ -29,6 +29,10 @@ watch: ## Run tests and watch for changes
 cover: ## Run cover
 	go test -cover ./...
 
+.PHONY: test-codecov
+test-codecov:
+	go test -cover -coverprofile=coverage.txt ./...
+
 lint: ## Lint go code
 	$(GOLANGCI-LINT) run
 

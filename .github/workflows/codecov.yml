@@ -15,7 +15,7 @@ jobs:
       - uses: ./.github/actions/go-setup
 
       - name: Run tests with coverage
-        run: go test -cover -coverprofile=coverage.txt ./...
+        run: make test-codecov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
