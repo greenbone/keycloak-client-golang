@@ -22,7 +22,7 @@ on:
 jobs:
   release:
     name: Keycloak Client Golang
-    uses: greenbone/workflows/.github/workflows/release-3rd-gen.yml@main
+    uses: greenbone/workflows/.github/workflows/release-3rd-gen-generic.yml@main
     with:
       release-type: ${{ inputs.release-type }}
       release-version: ${{ inputs.release-version }}
