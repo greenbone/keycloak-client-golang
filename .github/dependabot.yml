@@ -4,13 +4,16 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
       time: "04:00"
+      day: "monday"
+    commit-message:
+      prefix: "Deps"
     allow:
       - dependency-type: direct
       - dependency-type: indirect
     groups:
-      dev-dependencies:
+      go-modules:
         patterns:
           - "*"
 
@@ -18,3 +21,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      time: "04:00"
+      day: "monday"
+    commit-message:
+      prefix: "Deps"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
