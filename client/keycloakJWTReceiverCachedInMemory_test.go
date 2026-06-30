@@ -46,7 +46,7 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 		},
 		{
 			name: "invalid cached token",
-			cachedToken: &gocloak.JWT{
+			cachedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "not a valid token",
 			},
 			mockToken: &gocloak.JWT{
@@ -60,7 +60,7 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 		},
 		{
 			name: "Expired cached token",
-			cachedToken: &gocloak.JWT{
+			cachedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzEwMjJ9.hsfQPY3ZVrVIV-bzI54NRoTDG6wWzORVp68lxGa3D08",
 			},
 			mockToken: &gocloak.JWT{
@@ -74,7 +74,7 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 		},
 		{
 			name: "NotBefore date is in the future",
-			cachedToken: &gocloak.JWT{
+			cachedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjo0ODczMjQyNTg3LCJleHAiOjQ4NzQyNDI1ODd9.QZeQwoWl-HRbCcuZbt_3DFnA_h-zD5DhPmcBR0TyrQw",
 			},
 			mockToken: &gocloak.JWT{
@@ -88,7 +88,7 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 		},
 		{
 			name: "IssuedAt date is in the future",
-			cachedToken: &gocloak.JWT{
+			cachedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0Ijo0ODczMjQyNTg3LCJleHAiOjQ4NzQyNDI1ODd9.h63qP0fMQGgx5S8eV-EHEO1zgSlBmjX3xR80iXnvhX0",
 			},
 			mockToken: &gocloak.JWT{
@@ -102,13 +102,13 @@ func TestKeycloakJWTReceiverCachedInMemory_GetClientToken(t *testing.T) {
 		},
 		{
 			name: "Valid cached token",
-			cachedToken: &gocloak.JWT{
+			cachedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ4NzMyNDI1ODd9.BHuBKDS9MUC01jmo_p4AcVChkbV0aiDZBXcU-hpj8mg",
 			},
 			mockToken: &gocloak.JWT{
 				AccessToken: "test_token",
 			},
-			expectedToken: &gocloak.JWT{
+			expectedToken: &gocloak.JWT{ //nolint:gosec // This is a test token, not a real secret
 				AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ4NzMyNDI1ODd9.BHuBKDS9MUC01jmo_p4AcVChkbV0aiDZBXcU-hpj8mg",
 			},
 			expectedError:    nil,
