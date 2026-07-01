@@ -1,5 +1,5 @@
 # default reviewers
-*               @greenbone/asset 
+*               @greenbone/security-intelligence 
 
 # .github
-.github/        @greenbone/asset @greenbone/devops
+.github/        @greenbone/security-intelligence @greenbone/devops
