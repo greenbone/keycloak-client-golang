@@ -22,3 +22,4 @@ jobs:
           directories: auth client
           license-type: "AGPL-3.0-or-later"
           target: main
+          single-year: true
