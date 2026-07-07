@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,14 +33,26 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 		}
 		t.Run("internal", func(t *testing.T) {
 			for _, test := range tests {
-				t.Run(test, func(t *testing.T) {
+				t.Run("internal url "+test, func(t *testing.T) {
 					authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 						AuthServerInternalUrl: test,
 						RealmId:               validRealm,
+						AuthServerPublicUrl:   validPublicUrl,
 					})
 
 					assert.ErrorContains(t, err, "invalid realm info")
 					assert.ErrorContains(t, err, "couldn't parse auth server internal url")
+					assert.Nil(t, authorizer)
+				})
+				t.Run("public url "+test, func(t *testing.T) {
+					authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
+						AuthServerPublicUrl:   test,
+						RealmId:               validRealm,
+						AuthServerInternalUrl: validInternalUrl,
+					})
+
+					assert.ErrorContains(t, err, "invalid realm info")
+					assert.ErrorContains(t, err, "couldn't parse auth server public url")
 					assert.Nil(t, authorizer)
 				})
 			}
@@ -50,6 +63,7 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 		authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 			RealmId:               validRealm,
 			AuthServerInternalUrl: validInternalUrl,
+			AuthServerPublicUrl:   validPublicUrl,
 		})
 
 		assert.NoError(t, err)
@@ -58,25 +72,37 @@ func TestNewKeycloakAuthorizer(t *testing.T) {
 }
 
 func TestParseJWT(t *testing.T) {
+	tokenIssuer, err := NewTokenIssuer(publicKeyALG, publicKeyID)
+	require.NoError(t, err)
+	authServer := FakeAuthServer(t, tokenIssuer)
+
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
-		AuthServerInternalUrl: validInternalUrl,
-	})
+		AuthServerInternalUrl: authServer.URL,
+		AuthServerPublicUrl:   validPublicUrl,
+	},
+		WithValidMethods("RS256"),
+		WithAudience(validAudience, "other valid audience"),
+	)
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
 
-	FakeCertResponse(t, authorizer)
-
 	t.Run("Wrong algorithm", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), invalidAlgorithmToken)
+		token := tokenIssuer.GetTokenWithAlg(t, jwt.SigningMethodHS256.Alg(), validClaims())
 
-		assert.ErrorContains(t, err, "validation of token failed")
-		assert.ErrorContains(t, err, "cannot find a key to decode the token")
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "invalid token signing method")
 		assert.Zero(t, userContext)
 	})
 
 	t.Run("Wrong signature", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), invalidSignatureToken)
+		token := tokenIssuer.GetToken(t, jwt.MapClaims{
+			"iss": validPublicUrl + "/realms/" + validRealm,
+		})
+		token += "XX" // malformed signature
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
 
 		assert.ErrorContains(t, err, "validation of token failed")
 		assert.ErrorContains(t, err, "crypto/rsa: verification error")
@@ -84,15 +110,85 @@ func TestParseJWT(t *testing.T) {
 	})
 
 	t.Run("Expired token", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), expiredToken)
+		claims := validClaims()
+		claims["exp"] = 1500000000
+		token := tokenIssuer.GetToken(t, claims)
 
-		assert.ErrorContains(t, err, "validation of token failed")
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "token has invalid claims")
 		assert.ErrorContains(t, err, "token is expired")
 		assert.Zero(t, userContext)
 	})
 
+	t.Run("missing expiration", func(t *testing.T) {
+		claims := validClaims()
+		delete(claims, "exp")
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "validation of token claims failed")
+		assert.ErrorContains(t, err, "exp claim is required")
+		assert.Zero(t, userContext)
+	})
+
+	t.Run("invalid issuedAt", func(t *testing.T) {
+		claims := validClaims()
+		claims["iat"] = 9999999999
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "validation of token claims failed")
+		assert.ErrorContains(t, err, "token used before issued")
+		assert.Zero(t, userContext)
+	})
+
+	t.Run("Wrong issuer", func(t *testing.T) {
+		claims := validClaims()
+		claims["iss"] = "invalid_issuer"
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "validation of token claims failed")
+		assert.ErrorContains(t, err, "token has invalid issuer")
+		assert.Zero(t, userContext)
+	})
+
+	t.Run("Missing subject", func(t *testing.T) {
+		claims := validClaims()
+		delete(claims, "sub")
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "validation of token claims failed")
+		assert.ErrorContains(t, err, "missing subject claim")
+		assert.Zero(t, userContext)
+	})
+
+	t.Run("Wrong audience", func(t *testing.T) {
+		claims := validClaims()
+		claims["aud"] = "invalid_audience"
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
+
+		assert.ErrorContains(t, err, "validation of token claims failed")
+		assert.ErrorContains(t, err, "token has invalid audience")
+		assert.Zero(t, userContext)
+	})
+
 	t.Run("Invalid claims", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), invalidClaimsToken)
+		claims := validClaims()
+		claims["email"] = 12345
+		claims["roles"] = 1
+		claims["groups"] = 2
+		token := tokenIssuer.GetToken(t, claims)
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
 
 		assert.ErrorContains(t, err, "parsing of token failed")
 		assert.ErrorContains(t, err, "cannot unmarshal number")
@@ -100,7 +196,9 @@ func TestParseJWT(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		userContext, err := authorizer.ParseJWT(context.Background(), validToken)
+		token := tokenIssuer.GetToken(t, validClaims())
+
+		userContext, err := authorizer.ParseJWT(context.Background(), token)
 
 		require.NoError(t, err)
 		require.NotZero(t, userContext)
@@ -111,18 +209,23 @@ func TestParseJWT(t *testing.T) {
 		assert.Equal(t, "initial", userContext.UserName)
 		assert.ElementsMatch(t, []string{"offline_access", "uma_authorization", "user", "default-roles-user-management"}, userContext.Roles)
 		assert.ElementsMatch(t, []string{"user-management-initial"}, userContext.Groups)
+		assert.ElementsMatch(t, []string{validOrigin}, userContext.AllowedOrigins)
 	})
 }
 
 func TestParseAuthorizationHeader(t *testing.T) {
+	tokenIssuer, err := NewTokenIssuer(publicKeyALG, publicKeyID)
+	require.NoError(t, err)
+	authServer := FakeAuthServer(t, tokenIssuer)
+	validToken := tokenIssuer.GetToken(t, validClaims())
+
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
-		AuthServerInternalUrl: validInternalUrl,
+		AuthServerInternalUrl: authServer.URL,
+		AuthServerPublicUrl:   validPublicUrl,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
-
-	FakeCertResponse(t, authorizer)
 
 	t.Run("Invalid fields", func(t *testing.T) {
 		tests := []string{
@@ -148,6 +251,10 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	})
 
 	t.Run("Invalid token", func(t *testing.T) {
+		expiredClaims := validClaims()
+		expiredClaims["exp"] = 1500000000
+		expiredToken := tokenIssuer.GetToken(t, expiredClaims)
+
 		userContext, err := authorizer.ParseAuthorizationHeader(context.Background(), "bearer "+expiredToken)
 
 		assert.ErrorContains(t, err, "validation of token failed")
@@ -169,14 +276,18 @@ func TestParseAuthorizationHeader(t *testing.T) {
 }
 
 func TestParseRequest(t *testing.T) {
+	tokenIssuer, err := NewTokenIssuer(publicKeyALG, publicKeyID)
+	require.NoError(t, err)
+	authServer := FakeAuthServer(t, tokenIssuer)
+	validToken := tokenIssuer.GetToken(t, validClaims())
+
 	authorizer, err := NewKeycloakAuthorizer(KeycloakRealmInfo{
 		RealmId:               validRealm,
-		AuthServerInternalUrl: validInternalUrl,
+		AuthServerInternalUrl: authServer.URL,
+		AuthServerPublicUrl:   validPublicUrl,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authorizer)
-
-	FakeCertResponse(t, authorizer)
 
 	t.Run("Invalid authorization header", func(t *testing.T) {
 		userContext, err := authorizer.ParseRequest(context.Background(), "invalid", validOrigin)

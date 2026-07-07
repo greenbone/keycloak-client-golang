@@ -11,6 +11,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -20,13 +21,12 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jarcoal/httpmock"
 	"github.com/samber/lo"
 
 	"github.com/greenbone/keycloak-client-golang/auth"
 )
 
-func setupToken() (token string, clean func()) {
+func setupToken() (token string, authURL string, clean func()) {
 	privateKey := newPrivateKey()
 
 	validToken := getToken(jwt.MapClaims{
@@ -37,29 +37,31 @@ func setupToken() (token string, clean func()) {
 		"roles":              []string{"offline_access", "uma_authorization", "user", "default-roles-user-management"},
 		"groups":             []string{"user-management-initial"},
 		"allowed-origins":    []string{"http://localhost:3000"},
+		"exp":                1500000000000,
 	}, privateKey)
 
-	cleanUp := mockKeycloak(privateKey.PublicKey)
+	mockKeycloak := mockKeycloak(privateKey.PublicKey, "user-management")
 
-	return validToken, cleanUp
+	return validToken, mockKeycloak.URL, mockKeycloak.Close
 }
 
 func ExampleNewKeycloakAuthorizer() {
-	validToken, clean := setupToken()
+	validToken, authUrl, clean := setupToken()
 	defer clean()
 
 	var (
-		realmId = "user-management"           // keycloak realm name
-		authUrl = "http://keycloak:8080/auth" // keycloak server internal url
-		origin  = "http://localhost:3000"     // request origin, note: it is optional, if request doesn't have Origin header it is not validated
+		realmId       = "user-management" // keycloak realm name
+		authPublicURL = "http://localhost:28080/auth"
+		origin        = "http://localhost:3000" // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{
 		RealmId:               realmId,
 		AuthServerInternalUrl: authUrl,
+		AuthServerPublicUrl:   authPublicURL,
 	}
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo, authorizerKeycloakMock) // NOTE: authorizerKeycloakMock only used for mocking keycloak cert response in this example, do not use outside tests!
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
@@ -95,21 +97,22 @@ func ExampleNewKeycloakAuthorizer() {
 }
 
 func ExampleNewGinAuthMiddleware() {
-	validToken, clean := setupToken()
+	validToken, authUrl, clean := setupToken()
 	defer clean()
 
 	var (
-		realmId = "user-management"           // keycloak realm name
-		authUrl = "http://keycloak:8080/auth" // keycloak server internal url
-		origin  = "http://localhost:3000"     // request origin, note: it is optional, if request doesn't have Origin header it is not validated
+		realmId       = "user-management"             // keycloak realm name
+		authPublicURL = "http://localhost:28080/auth" // keycloak server public url
+		origin        = "http://localhost:3000"       // request origin, note: it is optional, if request doesn't have Origin header it is not validated
 	)
 
 	realmInfo := auth.KeycloakRealmInfo{
 		RealmId:               realmId,
 		AuthServerInternalUrl: authUrl,
+		AuthServerPublicUrl:   authPublicURL,
 	}
 
-	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo, authorizerKeycloakMock) // NOTE: authorizerKeycloakMock only used for mocking keycloak cert response in this example, do not use outside tests!
+	authorizer, err := auth.NewKeycloakAuthorizer(realmInfo)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating keycloak token authorizer: %w", err))
 		return
@@ -185,9 +188,7 @@ func getBase64N(n *big.Int) string {
 	return res
 }
 
-var authorizerKeycloakMock func(*auth.KeycloakAuthorizer)
-
-func mockKeycloak(publicKey rsa.PublicKey) (clean func()) {
+func mockKeycloak(publicKey rsa.PublicKey, realm string) *httptest.Server {
 	certResponse := &gocloak.CertResponse{
 		Keys: &[]gocloak.CertResponseKey{
 			{
@@ -199,15 +200,15 @@ func mockKeycloak(publicKey rsa.PublicKey) (clean func()) {
 		},
 	}
 
-	certResponder, err := httpmock.NewJsonResponder(200, certResponse)
-	if err != nil {
-		panic(err)
-	}
-	httpmock.RegisterResponder("GET", "http://keycloak:8080/auth/realms/user-management/protocol/openid-connect/certs", certResponder)
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != fmt.Sprintf("/realms/%s/protocol/openid-connect/certs", realm) {
+			http.NotFound(w, r)
+			return
+		}
 
-	authorizerKeycloakMock = auth.ConfigureGoCloak(func(c *gocloak.GoCloak) {
-		httpmock.ActivateNonDefault(c.RestyClient().GetClient())
-	})
-
-	return httpmock.DeactivateAndReset
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(certResponse); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
 }
