@@ -7,7 +7,7 @@ package client
 import (
 	"context"
 
-	"github.com/Nerzal/gocloak/v13"
+	"github.com/Nerzal/gocloak/v14"
 )
 
 type IKeycloakRepository interface {

@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/Nerzal/gocloak/v13"
+	"github.com/Nerzal/gocloak/v14"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
@@ -190,7 +190,7 @@ func getBase64N(n *big.Int) string {
 
 func mockKeycloak(publicKey rsa.PublicKey, realm string) *httptest.Server {
 	certResponse := &gocloak.CertResponse{
-		Keys: &[]gocloak.CertResponseKey{
+		Keys: []gocloak.CertResponseKey{
 			{
 				Kid: lo.ToPtr(publicKeyID),
 				Alg: lo.ToPtr(publicKeyALG),

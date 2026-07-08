@@ -17,7 +17,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Nerzal/gocloak/v13"
+	"github.com/Nerzal/gocloak/v14"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -117,7 +117,7 @@ func getBase64N(n *big.Int) string {
 
 func FakeAuthServer(t *testing.T, tokenIssuer *TokenIssuer) *httptest.Server {
 	certResponse := &gocloak.CertResponse{
-		Keys: &[]gocloak.CertResponseKey{
+		Keys: []gocloak.CertResponseKey{
 			{
 				Kid: lo.ToPtr(tokenIssuer.publicKeyID),
 				Alg: lo.ToPtr(tokenIssuer.publicKeyALG),
