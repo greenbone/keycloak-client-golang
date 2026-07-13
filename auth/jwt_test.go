@@ -10,28 +10,17 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/Nerzal/gocloak/v13"
+	"github.com/Nerzal/gocloak/v14"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jarcoal/httpmock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-)
-
-var (
-	expiredToken          string
-	noRealmToken          string
-	invalidClaimsToken    string
-	invalidIssuerToken    string
-	invalidRealmToken     string
-	invalidAlgorithmToken string
-	invalidSignatureToken string
-	validToken            string
-	publicKey             rsa.PublicKey
 )
 
 const (
@@ -39,81 +28,14 @@ const (
 	validInternalUrl = "http://keycloak:8080/auth"
 	validPublicUrl   = "http://localhost:28080/auth"
 	validOrigin      = "http://localhost:3000"
+	validAudience    = "jwt-tests"
 
 	publicKeyID  = "OMTg5TWEm1TZeqeb2zuJJFX1ZxOwDs_IfPIgJ0uIFU0"
 	publicKeyALG = "RS256"
 )
 
-func init() {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		fmt.Printf("Cannot generate RSA key\n")
-		os.Exit(1)
-	}
-	publicKey = privateKey.PublicKey
-
-	getToken := func(claims jwt.MapClaims) (string, error) {
-		token := jwt.NewWithClaims(jwt.GetSigningMethod(publicKeyALG), claims)
-		token.Header["kid"] = publicKeyID
-
-		return token.SignedString(privateKey) //nolint
-	}
-
-	invalidAlgorithmToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iss": validPublicUrl + "/realms/" + validRealm,
-	}).SignedString([]byte("SOME_KEY"))
-	if err != nil {
-		panic(err)
-	}
-
-	expiredToken, err = getToken(jwt.MapClaims{
-		"iss": validPublicUrl + "/realms/" + validRealm,
-		"iat": 1500000000,
-		"exp": 1600000000,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	invalidClaimsToken, err = getToken(jwt.MapClaims{
-		"email":  12345,
-		"roles":  1,
-		"groups": 2,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	invalidIssuerToken, err = getToken(jwt.MapClaims{
-		"iss": "invalid_issuer",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	invalidRealmToken, err = getToken(jwt.MapClaims{
-		"iss": "http://invalid_url/realms/" + validRealm,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	noRealmToken, err = getToken(jwt.MapClaims{
-		"iss": "",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	invalidSignatureToken, err = getToken(jwt.MapClaims{
-		"iss": validPublicUrl + "/realms/" + validRealm,
-	})
-	if err != nil {
-		panic(err)
-	}
-	invalidSignatureToken += "XX" // malform signature
-
-	validClaims := jwt.MapClaims{
+func validClaims() jwt.MapClaims {
+	return jwt.MapClaims{
 		"iss":                validPublicUrl + "/realms/" + validRealm,
 		"sub":                "1927ed8a-3f1f-4846-8433-db290ea5ff90",
 		"email":              "initial@host.local",
@@ -121,12 +43,62 @@ func init() {
 		"roles":              []string{"offline_access", "uma_authorization", "user", "default-roles-user-management"},
 		"groups":             []string{"user-management-initial"},
 		"allowed-origins":    []string{validOrigin},
+		"aud":                validAudience,
+		"exp":                9999999999,
+		"iat":                1500000000,
+	}
+}
+
+type TokenIssuer struct {
+	privateKey   *rsa.PrivateKey
+	publicKey    rsa.PublicKey
+	publicKeyALG string
+	publicKeyID  string
+}
+
+func NewTokenIssuer(publicKeyALG, publicKeyID string) (*TokenIssuer, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate RSA key: %w", err)
 	}
 
-	validToken, err = getToken(validClaims)
-	if err != nil {
-		panic(err)
+	return &TokenIssuer{
+		privateKey:   privateKey,
+		publicKey:    privateKey.PublicKey,
+		publicKeyALG: publicKeyALG,
+		publicKeyID:  publicKeyID,
+	}, nil
+}
+
+func (f *TokenIssuer) GetToken(t *testing.T, claims jwt.MapClaims) string {
+	t.Helper()
+	return f.GetTokenWithAlg(t, f.publicKeyALG, claims)
+}
+
+// GetTokenWithAlg creates a JWT token with the given claims and signs it.
+// Note: [alg] currently only supports RS256 and HS256
+func (f *TokenIssuer) GetTokenWithAlg(t *testing.T, alg string, claims jwt.MapClaims) string {
+	t.Helper()
+
+	require.Contains(t, []string{"RS256", "HS256"}, alg, "currently only `alg` `RS256` and `HS256` allowed")
+
+	method := jwt.GetSigningMethod(alg)
+	require.NotNilf(t, method, "unknown signing algorithm: %s", alg)
+
+	token := jwt.NewWithClaims(method, claims)
+	token.Header["kid"] = f.publicKeyID
+
+	var signingKey any
+	signingKey = f.privateKey
+
+	if alg == jwt.SigningMethodHS256.Alg() { // HS256 needs a different key format
+		signingKey = []byte("SOME_KEY")
 	}
+
+	tokenString, err := token.SignedString(signingKey)
+	require.NoError(t, err)
+
+	return tokenString
 }
 
 func getBase64E(e int) string {
@@ -143,24 +115,32 @@ func getBase64N(n *big.Int) string {
 	return res
 }
 
-func FakeCertResponse(t *testing.T, authorizer *KeycloakAuthorizer) {
+func FakeAuthServer(t *testing.T, tokenIssuer *TokenIssuer) *httptest.Server {
 	certResponse := &gocloak.CertResponse{
-		Keys: &[]gocloak.CertResponseKey{
+		Keys: []gocloak.CertResponseKey{
 			{
-				Kid: lo.ToPtr(publicKeyID),
-				Alg: lo.ToPtr(publicKeyALG),
-				N:   lo.ToPtr(getBase64N(publicKey.N)),
-				E:   lo.ToPtr(getBase64E(publicKey.E)),
+				Kid: lo.ToPtr(tokenIssuer.publicKeyID),
+				Alg: lo.ToPtr(tokenIssuer.publicKeyALG),
+				N:   lo.ToPtr(getBase64N(tokenIssuer.publicKey.N)),
+				E:   lo.ToPtr(getBase64E(tokenIssuer.publicKey.E)),
 			},
 		},
 	}
 
-	httpmock.ActivateNonDefault(authorizer.client.RestyClient().GetClient())
-	t.Cleanup(httpmock.DeactivateAndReset)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != fmt.Sprintf("/realms/%s/protocol/openid-connect/certs", validRealm) {
+			http.NotFound(w, r)
+			return
+		}
 
-	certResponder, err := httpmock.NewJsonResponder(200, certResponse)
-	require.NoError(t, err)
-	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", validInternalUrl, validRealm), certResponder)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(certResponse); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	return server
 }
 
 // Sample of real cert response from keycloak

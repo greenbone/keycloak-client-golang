@@ -70,6 +70,11 @@ func TestGinAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		tokenIssuer, err := NewTokenIssuer(publicKeyALG, publicKeyID)
+		require.NoError(t, err)
+
+		token := tokenIssuer.GetToken(t, validClaims())
+
 		parseRequestFunc := func(ctx context.Context, auth string, origin string) (UserContext, error) {
 			return UserContext{
 				Realm:        "user-management",
@@ -88,7 +93,7 @@ func TestGinAuthMiddleware(t *testing.T) {
 		w := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(w)
 		ctx.Request, _ = http.NewRequest("GET", "/", nil)
-		ctx.Request.Header.Add("Authorization", fmt.Sprintf("bearer %s", validToken))
+		ctx.Request.Header.Add("Authorization", fmt.Sprintf("bearer %s", token))
 		ctx.Request.Header.Add("Origin", validOrigin)
 		auth(ctx)
 
