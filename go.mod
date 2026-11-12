@@ -1,6 +1,6 @@
 module github.com/greenbone/keycloak-client-golang
 
-go 1.26.10
+go 1.27.4
 
 require (
 	github.com/Nerzal/gocloak/v14 v14.0.4
